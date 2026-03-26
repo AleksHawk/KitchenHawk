@@ -40,6 +40,7 @@ const A="#e8530a",G="#2d7a1f",BG="#1a1a1a",C="#242424",C2="#2e2e2e",BR="#333",MU
 
 // ─── MEAL DB ────────────────────────────────────
 const DB="https://www.themealdb.com/api/json/v1/1";
+const PROXY="https://api.allorigins.win/get?url=";
 
 const parseMeal=m=>({
   id:"m"+m.idMeal,
@@ -57,9 +58,18 @@ const parseMeal=m=>({
 });
 
 const apiFetch=async(url)=>{
-  const r=await fetch(url);
-  const d=await r.json();
-  return d.meals||[];
+  try{
+    // Try direct first
+    const r=await fetch(url,{mode:"cors"});
+    if(r.ok){const d=await r.json();return d.meals||[];}
+  }catch{}
+  try{
+    // Fallback through proxy
+    const r=await fetch(PROXY+encodeURIComponent(url));
+    const d=await r.json();
+    const parsed=JSON.parse(d.contents);
+    return parsed.meals||[];
+  }catch{return[];}
 };
 
 // ─── LOCAL STORAGE ──────────────────────────────
