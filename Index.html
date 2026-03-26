@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KitchenHawk">
+<meta name="theme-color" content="#1a1a1a">
+<title>🍽️ KitchenHawk</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#f0f0f0;overscroll-behavior:none}
+#root{max-width:430px;margin:0 auto;min-height:100dvh;position:relative}
+::-webkit-scrollbar{width:0;height:0}
+input,select,textarea,button{font-family:inherit}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade{animation:fadeUp .25s ease}
+.shimmer{background:linear-gradient(90deg,#252525 25%,#303030 50%,#252525 75%);background-size:400px 100%;animation:shimmer 1.2s infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+<script type="text/babel">
+const {useState,useEffect,useRef,useMemo,useCallback}=React;
+
+// ─── COLORS ────────────────────────────────────
+const A="#e8530a",G="#2d7a1f",BG="#1a1a1a",C="#242424",C2="#2e2e2e",BR="#333",MU="#666",SO="#999",TX="#f0f0f0";
+
+// ─── MEAL DB ────────────────────────────────────
+const DB="https://www.themealdb.com/api/json/v1/1";
+
+const parseMeal=m=>({
+  id:"m"+m.idMeal,
+  name:m.strMeal||"",
+  cat:m.strCategory||"",
+  area:m.strArea||"",
+  thumb:m.strMealThumb||"",
+  kcal:200+Math.floor((parseInt(m.idMeal)||0)%300),
+  time:15+Math.floor((parseInt(m.idMeal)||0)%45),
+  tags:(m.strTags||"").split(",").filter(Boolean).slice(0,3),
+  ing:Array.from({length:20},(_,i)=>i+1).map(i=>({n:(m[`strIngredient${i}`]||"").trim(),a:(m[`strMeasure${i}`]||"").trim()})).filter(x=>x.n),
+  steps:(m.strInstructions||"").split(/\r?\n/).map(s=>s.trim()).filter(s=>s.length>15).slice(0,15),
+  youtube:m.strYoutube||"",
+  source:m.strSource||"",
+});
+
+const apiFetch=async(url)=>{
+  const r=await fetch(url);
+  const d=await r.json();
+  return d.meals||[];
+};
+
+// ─── LOCAL STORAGE ──────────────────────────────
+const useLS=(key,def)=>{
+  const[v,sv]=useState(()=>{try{const s=localStorage.getItem(key);return s?JSON.parse(s):def;}catch{return def;}});
+  const set=useCallback(fn=>{sv(p=>{const n=typeof fn==="function"?fn(p):fn;try{localStorage.setItem(key,JSON.stringify(n));}catch{}return n;});},[key]);
+  return[v,set];
+};
+
+// ─── CLAUDE ─────────────────────────────────────
+const claude=async(key,msgs,sys="",max=700)=>{
+  const r=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max,system:sys,messages:msgs})
+  });
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  return d.content.map(b=>b.text||"").join("");
+};
+
+// ─── SKELETON ───────────────────────────────────
+const Skel=()=>(
+  <div style={{background:C,borderRadius:16,overflow:"hidden",marginBottom:12}}>
+    <div className="shimmer" style={{height:170}}/>
+    <div style={{padding:"12px 14px"}}>
+      <div className="shimmer" style={{height:16,width:"65%",borderRadius:8,marginBottom:8}}/>
+      <div className="shimmer" style={{height:12,width:"40%",borderRadius:8}}/>
+    </div>
+  </div>
+);
+
+// ─── RECIPE CARD ─────────────────────────────────
+const RCard=({r,onOpen,onAdd,onFav,faved})=>(
+  <div className="fade" style={{background:C,borderRadius:16,overflow:"hidden",marginBottom:12,cursor:"pointer"}} onClick={onOpen}>
+    <div style={{height:170,position:"relative",overflow:"hidden",background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)"}}>
+      {r.thumb
+        ?<img src={r.thumb} alt={r.name} style={{width:"100%",height:"100%",objectFit:"cover"}} loading="lazy"/>
+        :<div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:60}}>🍽️</div>
+      }
+      <div style={{position:"absolute",inset:0,background:"linear-gradient(transparent 45%,rgba(0,0,0,.75))"}}/>
+      <div style={{position:"absolute",bottom:8,left:10,display:"flex",gap:6}}>
+        <span style={{background:"rgba(0,0,0,.7)",borderRadius:20,padding:"3px 10px",fontSize:11}}>⏱ {r.time} хв</span>
+        {r.area&&<span style={{background:"rgba(0,0,0,.7)",borderRadius:20,padding:"3px 10px",fontSize:11}}>🌍 {r.area}</span>}
+      </div>
+      <button onClick={e=>{e.stopPropagation();onFav();}} style={{position:"absolute",top:10,right:50,background:"rgba(0,0,0,.55)",border:"none",color:faved?"#ff6b6b":TX,borderRadius:"50%",width:34,height:34,fontSize:17,cursor:"pointer"}}>♥</button>
+      <button onClick={e=>{e.stopPropagation();onAdd();}} style={{position:"absolute",top:10,right:10,background:A,border:"none",color:"#fff",borderRadius:"50%",width:34,height:34,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>+</button>
+    </div>
+    <div style={{padding:"11px 14px"}}>
+      <div style={{fontWeight:700,fontSize:15,marginBottom:5,lineHeight:1.3}}>{r.name}</div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+        {r.cat&&<span style={{background:C2,borderRadius:10,padding:"2px 9px",fontSize:11,color:SO}}>{r.cat}</span>}
+        {r.tags.slice(0,2).map((t,i)=><span key={i} style={{background:C2,borderRadius:10,padding:"2px 9px",fontSize:11,color:MU}}>{t}</span>)}
+      </div>
+    </div>
+  </div>
+);
+
+// ─── RECIPE DETAIL ───────────────────────────────
+const RDetail=({r,srv,setSrv,onBack,onPlan,onDiary})=>{
+  const[astep,setAstep]=useState(-1);
+  const[tsec,setTsec]=useState(0);
+  const[ton,setTon]=useState(false);
+  const ref=useRef();
+  useEffect(()=>{
+    if(ton&&tsec>0)ref.current=setTimeout(()=>setTsec(s=>s-1),1000);
+    else if(tsec===0)setTon(false);
+    return()=>clearTimeout(ref.current);
+  },[ton,tsec]);
+  const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+
+  return(
+    <div style={{position:"fixed",inset:0,background:BG,zIndex:100,maxWidth:430,margin:"0 auto",overflowY:"auto"}}>
+      {ton&&tsec>0&&(
+        <div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",maxWidth:430,width:"100%",zIndex:200,background:A,padding:"11px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontWeight:800,fontSize:20}}>⏱ {fmt(tsec)}</span>
+          <button onClick={()=>setTon(false)} style={{background:"rgba(0,0,0,.3)",border:"none",color:"#fff",borderRadius:20,padding:"5px 16px",cursor:"pointer",fontSize:13}}>стоп</button>
+        </div>
+      )}
+      <div style={{position:"relative",height:260,overflow:"hidden",background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)"}}>
+        {r.thumb?<img src={r.thumb} alt={r.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+          :<div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:90}}>🍽️</div>}
+        <div style={{position:"absolute",inset:0,background:"linear-gradient(transparent 35%,rgba(0,0,0,.8))"}}/>
+        <button onClick={onBack} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,.6)",border:"none",color:"#fff",borderRadius:"50%",width:42,height:42,fontSize:20,cursor:"pointer"}}>←</button>
+        <div style={{position:"absolute",bottom:16,left:16,right:16}}>
+          <div style={{fontWeight:800,fontSize:22,color:"#fff",lineHeight:1.2,marginBottom:6}}>{r.name}</div>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            {r.area&&<span style={{background:"rgba(255,255,255,.2)",borderRadius:20,padding:"3px 12px",fontSize:12}}>🌍 {r.area}</span>}
+            {r.cat&&<span style={{background:"rgba(255,255,255,.2)",borderRadius:20,padding:"3px 12px",fontSize:12}}>{r.cat}</span>}
+          </div>
+        </div>
+      </div>
+
+      <div style={{padding:"20px 20px 100px"}}>
+        {/* SERVINGS */}
+        <div style={{display:"flex",alignItems:"center",gap:12,background:C,borderRadius:14,padding:"12px 18px",marginBottom:16}}>
+          <span style={{fontSize:13,color:MU,flex:1}}>Кількість порцій:</span>
+          <button onClick={()=>setSrv(s=>Math.max(1,s-1))} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:30,height:30,fontSize:20,cursor:"pointer"}}>−</button>
+          <span style={{fontWeight:800,fontSize:20,minWidth:26,textAlign:"center"}}>{srv}</span>
+          <button onClick={()=>setSrv(s=>s+1)} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:30,height:30,fontSize:20,cursor:"pointer"}}>+</button>
+        </div>
+
+        {/* MACROS */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:18}}>
+          {[
+            {l:"Ккал",v:Math.round(r.kcal*srv/4),c:A},
+            {l:"Білки",v:"~"+Math.round(r.kcal*srv/4*0.05)+"г",c:G},
+            {l:"Жири",v:"~"+Math.round(r.kcal*srv/4*0.04)+"г",c:null},
+            {l:"Вугл.",v:"~"+Math.round(r.kcal*srv/4*0.09)+"г",c:null},
+          ].map((m,i)=>(
+            <div key={i} style={{background:C,borderRadius:12,padding:"10px 6px",textAlign:"center"}}>
+              <div style={{fontWeight:800,fontSize:18,color:m.c||TX}}>{m.v}</div>
+              <div style={{fontSize:10,color:MU,marginTop:2}}>{m.l}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* INGREDIENTS */}
+        <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Інгредієнти</div>
+        <div style={{background:C,borderRadius:14,overflow:"hidden",marginBottom:20}}>
+          {r.ing.map((ing,i)=>(
+            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<r.ing.length-1?`1px solid ${BR}`:"none"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:A,flexShrink:0}}/>
+              <div style={{flex:1,fontSize:14}}>{ing.n}</div>
+              {ing.a&&<div style={{fontSize:13,fontWeight:600,color:A}}>{ing.a}</div>}
+            </div>
+          ))}
+        </div>
+
+        {/* STEPS */}
+        <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Приготування</div>
+        {r.steps.map((step,i)=>{
+          const mins=step.match(/(\d+)\s*(minute|min)/i);
+          const act=astep===i;
+          return(
+            <div key={i} onClick={()=>setAstep(act?-1:i)} style={{display:"flex",gap:12,marginBottom:10,padding:"10px",background:act?C:"transparent",borderRadius:12,cursor:"pointer",transition:"background .2s"}}>
+              <div style={{background:act?A:C2,color:"#fff",borderRadius:"50%",width:30,height:30,minWidth:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,transition:"background .2s"}}>{i+1}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,lineHeight:1.7,color:act?TX:SO}}>{step}</div>
+                {act&&mins&&<button onClick={e=>{e.stopPropagation();setTsec(parseInt(mins[1])*60);setTon(true);}} style={{marginTop:8,background:C2,border:"none",color:A,borderRadius:8,padding:"5px 14px",fontSize:12,cursor:"pointer",fontWeight:600}}>⏱ Таймер {mins[1]} хв</button>}
+              </div>
+            </div>
+          );
+        })}
+
+        {/* YOUTUBE */}
+        {r.youtube&&<a href={r.youtube} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:12,background:"#ff0000",borderRadius:12,padding:"13px 18px",marginTop:16,textDecoration:"none",color:"#fff",fontWeight:700,fontSize:14}}>▶️ Дивитись на YouTube</a>}
+
+        {/* ACTIONS */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:18}}>
+          <button onClick={()=>{onDiary(r,srv);alert("Додано в щоденник!");}} style={{padding:14,background:C,border:`1px solid ${BR}`,color:TX,borderRadius:12,fontWeight:600,fontSize:14,cursor:"pointer"}}>+ Щоденник</button>
+          <button onClick={()=>onPlan(r)} style={{padding:14,background:A,border:"none",color:"#fff",borderRadius:12,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ В раціон</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ─── CATEGORIES ──────────────────────────────────
+const CATS=[
+  {l:"🔥 Всі",k:"",type:"letter"},
+  {l:"🍗 Курка",k:"chicken",type:"search"},
+  {l:"🥩 Свинина",k:"pork",type:"search"},
+  {l:"🐄 Яловичина",k:"beef",type:"cat"},
+  {l:"🐟 Морепрод.",k:"Seafood",type:"cat"},
+  {l:"🥦 Вегетар.",k:"Vegetarian",type:"cat"},
+  {l:"🍝 Паста",k:"pasta",type:"search"},
+  {l:"🍰 Десерти",k:"Dessert",type:"cat"},
+  {l:"☀️ Сніданок",k:"Breakfast",type:"cat"},
+  {l:"🐑 Баранина",k:"Lamb",type:"cat"},
+  {l:"🥗 Гарніри",k:"Side",type:"cat"},
+  {l:"🍞 Випічка",k:"bread",type:"search"},
+  {l:"🍲 Супи",k:"soup",type:"search"},
+  {l:"🌮 Закуски",k:"Starter",type:"cat"},
+  {l:"🐓 Птиця",k:"turkey",type:"search"},
+  {l:"🥚 Яйця",k:"eggs",type:"search"},
+];
+
+const AREAS=["American","British","Canadian","Chinese","Croatian","Dutch","Egyptian","Filipino","French","Greek","Indian","Irish","Italian","Jamaican","Japanese","Kenyan","Malaysian","Mexican","Moroccan","Polish","Portuguese","Russian","Spanish","Thai","Tunisian","Turkish","Ukrainian","Unknown","Vietnamese"];
+
+const DAYS=["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
+const PMLS=["Сніданок","Обід / Суп","Вечеря"];
+const PICO={Сніданок:"☀️","Обід / Суп":"🍲",Вечеря:"🌙"};
+
+// ─── RECIPES PAGE ─────────────────────────────────
+const RecipesPage=({faves,onFav,onAdd,onOpen,myRecs,setMyRecs,onCacheRecipes})=>{
+  const[sub,setSub]=useState("browse");
+  const[meals,setMeals]=useState([]);
+  const[loading,setLoading]=useState(false);
+  const[search,setSearch]=useState("");
+  const[selCat,setSelCat]=useState(CATS[0]);
+  const[selArea,setSelArea]=useState("");
+  const[sort,setSort]=useState("def");
+  const[page,setPage]=useState(0);
+  const[fridgeQ,setFridgeQ]=useState("");
+  const[fridgeRes,setFridgeRes]=useState([]);
+  const[fridgeLoading,setFridgeLoading]=useState(false);
+  const PER=12;
+  const deb=useRef();
+
+  const load=useCallback(async(cat,area,q)=>{
+    setLoading(true);setPage(0);
+    try{
+      let all=[];
+      if(q&&q.trim()){
+        const m=await apiFetch(`${DB}/search.php?s=${encodeURIComponent(q.trim())}`);
+        all=m;
+      } else if(area){
+        const list=await apiFetch(`${DB}/filter.php?a=${encodeURIComponent(area)}`);
+        const ids=list.slice(0,40).map(x=>x.idMeal);
+        const details=await Promise.all(ids.map(id=>apiFetch(`${DB}/lookup.php?i=${id}`).then(m=>m[0])));
+        all=details.filter(Boolean);
+      } else if(cat.type==="cat"){
+        const list=await apiFetch(`${DB}/filter.php?c=${encodeURIComponent(cat.k)}`);
+        const ids=list.slice(0,40).map(x=>x.idMeal);
+        const details=await Promise.all(ids.map(id=>apiFetch(`${DB}/lookup.php?i=${id}`).then(m=>m[0])));
+        all=details.filter(Boolean);
+      } else if(cat.type==="search"&&cat.k){
+        const m=await apiFetch(`${DB}/search.php?s=${encodeURIComponent(cat.k)}`);
+        all=m;
+      } else {
+        // Load variety — multiple letters
+        const letters=["a","b","c","s","m","p","r","f","g","h"];
+        const res=await Promise.all(letters.map(l=>apiFetch(`${DB}/search.php?f=${l}`)));
+        all=res.flat();
+      }
+      const parsed=all.map(parseMeal);
+      setMeals(parsed);
+      onCacheRecipes(parsed);
+    }catch(e){console.error(e);}
+    setLoading(false);
+  },[]);
+
+  useEffect(()=>{load(selCat,selArea,"");},[]);
+
+  const doSearch=useCallback(q=>{
+    clearTimeout(deb.current);
+    deb.current=setTimeout(()=>load(CATS[0],"",q),600);
+  },[load]);
+
+  useEffect(()=>{if(search)doSearch(search);},[search]);
+
+  const searchFridge=async()=>{
+    if(!fridgeQ.trim())return;
+    setFridgeLoading(true);
+    try{
+      const qs=fridgeQ.split(/[,;\s]+/).filter(Boolean).slice(0,3);
+      const results=await Promise.all(qs.map(q=>apiFetch(`${DB}/filter.php?i=${encodeURIComponent(q)}`)));
+      const counts={};
+      results.forEach(list=>list.forEach(m=>{counts[m.idMeal]=(counts[m.idMeal]||0)+1;}));
+      const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,20);
+      const details=await Promise.all(sorted.map(([id])=>apiFetch(`${DB}/lookup.php?i=${id}`).then(m=>m[0])));
+      setFridgeRes(details.filter(Boolean).map(parseMeal));
+    }catch(e){console.error(e);}
+    setFridgeLoading(false);
+  };
+
+  const sorted2=useMemo(()=>{
+    let r=[...meals];
+    if(sort==="ta")r.sort((a,b)=>a.time-b.time);
+    else if(sort==="td")r.sort((a,b)=>b.time-a.time);
+    else if(sort==="ka")r.sort((a,b)=>a.kcal-b.kcal);
+    else if(sort==="kd")r.sort((a,b)=>b.kcal-a.kcal);
+    return r;
+  },[meals,sort]);
+
+  const shown=sorted2.slice(0,(page+1)*PER);
+  const hasFaves=faves.length>0;
+
+  const inp={background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px 14px",fontSize:14,color:TX,outline:"none",width:"100%"};
+
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{fontWeight:800,fontSize:26,marginBottom:12}}>🍽️ Рецепти</div>
+
+      {/* SUBTABS */}
+      <div style={{display:"flex",background:C,borderRadius:20,padding:3,marginBottom:14,gap:2}}>
+        {[["browse","🔍 Пошук"],["fridge","🥬 З холодильника"],["favs","❤️ Збережені"],["mine","📝 Мої"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setSub(v)} style={{flex:1,background:sub===v?A:"transparent",border:"none",color:sub===v?"#fff":MU,borderRadius:18,padding:"7px 2px",fontSize:11,cursor:"pointer",fontWeight:sub===v?700:400}}>{l}</button>
+        ))}
+      </div>
+
+      {/* BROWSE */}
+      {sub==="browse"&&(<>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Шукати: chicken, pasta, soup..." style={{...inp,marginBottom:10}}/>
+
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
+          {CATS.map((cat,i)=>(
+            <button key={i} onClick={()=>{setSelCat(cat);setSearch("");setSelArea("");load(cat,"","");}} style={{background:selCat.l===cat.l?A:C,border:"none",color:selCat.l===cat.l?"#fff":MU,borderRadius:20,padding:"7px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",fontWeight:selCat.l===cat.l?700:400}}>{cat.l}</button>
+          ))}
+        </div>
+
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <select value={selArea} onChange={e=>{setSelArea(e.target.value);setSelCat(CATS[0]);setSearch("");load(CATS[0],e.target.value,"");}} style={{flex:1,background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"8px 10px",fontSize:12,color:TX,outline:"none",cursor:"pointer"}}>
+            <option value="">🌍 Кухня світу</option>
+            {AREAS.map(a=><option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{flex:1,background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"8px 10px",fontSize:12,color:TX,outline:"none",cursor:"pointer"}}>
+            <option value="def">Без сортування</option>
+            <option value="ta">⏱ Швидкі спочатку</option>
+            <option value="td">⏱ Довгі спочатку</option>
+            <option value="ka">🔥 Менше калорій</option>
+            <option value="kd">🔥 Більше калорій</option>
+          </select>
+        </div>
+
+        <div style={{fontSize:12,color:MU,marginBottom:10}}>{loading?"Завантаження...":sorted2.length+" рецептів"}</div>
+        {loading?[1,2,3,4,5].map(i=><Skel key={i}/>):shown.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>)}
+        {!loading&&shown.length<sorted2.length&&<button onClick={()=>setPage(p=>p+1)} style={{width:"100%",padding:14,background:C,border:`1px solid ${BR}`,color:SO,borderRadius:12,fontSize:14,cursor:"pointer",marginBottom:16}}>Ще {sorted2.length-shown.length} рецептів ↓</button>}
+      </>)}
+
+      {/* FRIDGE */}
+      {sub==="fridge"&&(<>
+        <div style={{fontSize:13,color:MU,marginBottom:8}}>Напиши що є — знайду рецепти:</div>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <input value={fridgeQ} onChange={e=>setFridgeQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&searchFridge()} placeholder="chicken, potato, onion..." style={{...inp,flex:1}}/>
+          <button onClick={searchFridge} disabled={fridgeLoading} style={{padding:"10px 16px",background:fridgeLoading?"#444":A,border:"none",color:"#fff",borderRadius:10,cursor:"pointer",fontWeight:700,fontSize:16}}>{fridgeLoading?"⏳":"🔍"}</button>
+        </div>
+        {fridgeLoading?[1,2,3].map(i=><Skel key={i}/>):fridgeRes.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>)}
+        {!fridgeQ&&!fridgeRes.length&&<div style={{textAlign:"center",padding:"40px 20px",color:MU}}><div style={{fontSize:44,marginBottom:10}}>🥬</div>Введи інгредієнти через кому</div>}
+      </>)}
+
+      {/* FAVS */}
+      {sub==="favs"&&(<>
+        {!hasFaves&&<div style={{textAlign:"center",padding:"40px 20px",color:MU}}><div style={{fontSize:44,marginBottom:10}}>❤️</div>Натисни ♥ на рецепті щоб зберегти</div>}
+        {meals.filter(r=>faves.includes(r.id)).map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={true}/>)}
+      </>)}
+
+      {/* MY */}
+      {sub==="mine"&&(<>
+        <button onClick={()=>{
+          const name=prompt("Назва рецепту:");
+          if(!name)return;
+          const steps=prompt("Як готувати (коротко):")||"";
+          setMyRecs(p=>[...p,{id:"my"+Date.now(),name,cat:"Мій рецепт",area:"",thumb:"",kcal:400,time:30,tags:["мій рецепт"],ing:[],steps:[steps],youtube:""}]);
+        }} style={{width:"100%",padding:14,background:"transparent",border:`2px dashed ${A}`,color:A,borderRadius:12,fontSize:14,cursor:"pointer",marginBottom:16,fontWeight:600}}>+ Додати свій рецепт</button>
+        {!myRecs.length&&<div style={{textAlign:"center",padding:"40px 20px",color:MU}}><div style={{fontSize:44,marginBottom:10}}>📝</div>Тут будуть твої рецепти</div>}
+        {myRecs.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>)}
+      </>)}
+    </div>
+  );
+};
+
+// ─── PLAN PAGE ───────────────────────────────────
+const PlanPage=({plan,setPlan,shop,setShop,srv,setSrv,cached})=>{
+  const[day,setDay]=useState(0);
+
+  const genDay=()=>{
+    if(!cached.length)return;
+    const sh=[...cached].sort(()=>Math.random()-.5);
+    const np={...plan};
+    PMLS.forEach((m,i)=>{
+      const r=sh[i]||sh[0];
+      np[`${day}-${m}`]=[r];
+      r.ing.forEach(ing=>setShop(p=>[...p,{id:Date.now()+Math.random(),name:`${ing.a} ${ing.n}`.trim(),from:r.name,bought:false}]));
+    });
+    setPlan(np);
+  };
+
+  const genWeek=()=>{
+    if(!cached.length)return;
+    const np={};
+    DAYS.forEach((_,di)=>{
+      const sh=[...cached].sort(()=>Math.random()-.5);
+      PMLS.forEach((m,mi)=>{
+        const r=sh[mi]||sh[0];
+        np[`${di}-${m}`]=[r];
+        r.ing.forEach(ing=>setShop(p=>[...p,{id:Date.now()+Math.random(),name:`${ing.a} ${ing.n}`.trim(),from:r.name,bought:false}]));
+      });
+    });
+    setPlan(np);
+  };
+
+  const rem=(d,m,i)=>{
+    const k=`${d}-${m}`;
+    setPlan(p=>{const a=[...(p[k]||[])];a.splice(i,1);return{...p,[k]:a}});
+  };
+
+  const dayKcal=PMLS.flatMap(m=>(plan[`${day}-${m}`]||[])).reduce((s,r)=>s+r.kcal,0);
+
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontWeight:800,fontSize:26}}>📅 Раціон</div>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={genDay} style={{padding:"7px 12px",background:C2,border:"none",color:SO,borderRadius:10,fontSize:12,cursor:"pointer"}}>День ✨</button>
+          <button onClick={genWeek} style={{padding:"7px 14px",background:A,border:"none",color:"#fff",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>Тиждень ✨</button>
+        </div>
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:10,background:C,borderRadius:12,padding:"10px 16px",marginBottom:14}}>
+        <span style={{fontSize:13,color:MU}}>Порцій:</span>
+        <button onClick={()=>setSrv(s=>Math.max(1,s-1))} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:28,height:28,fontSize:18,cursor:"pointer"}}>−</button>
+        <span style={{fontWeight:800,fontSize:18,minWidth:22,textAlign:"center"}}>{srv}</span>
+        <button onClick={()=>setSrv(s=>s+1)} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:28,height:28,fontSize:18,cursor:"pointer"}}>+</button>
+        {dayKcal>0&&<span style={{marginLeft:"auto",fontSize:13,color:A,fontWeight:700}}>🔥 {dayKcal} ккал</span>}
+      </div>
+
+      <div style={{display:"flex",overflowX:"auto",marginBottom:14}}>
+        {DAYS.map((d,i)=>(
+          <div key={i} onClick={()=>setDay(i)} style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:48,cursor:"pointer"}}>
+            <div style={{fontSize:11,color:day===i?A:MU,marginBottom:4,fontWeight:600}}>{d}</div>
+            <div style={{width:36,height:36,borderRadius:"50%",background:day===i?A:"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:15,color:day===i?"#fff":MU}}>{i+1}</div>
+            <div style={{width:6,height:6,borderRadius:"50%",background:PMLS.some(m=>plan[`${i}-${m}`]?.length)?A:"transparent",marginTop:4}}/>
+          </div>
+        ))}
+      </div>
+
+      {PMLS.map(meal=>{
+        const k=`${day}-${meal}`;
+        const items=plan[k]||[];
+        return(
+          <div key={meal} style={{background:C,borderRadius:16,padding:16,marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:items.length?12:0}}>
+              <div style={{fontWeight:700,fontSize:16}}>{PICO[meal]} {meal}</div>
+              {items.length>0&&<button onClick={()=>rem(day,meal,0)} style={{background:C2,border:"none",color:MU,borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>↻ замінити</button>}
+            </div>
+            {items.map((r,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:`1px solid ${BR}`}}>
+                <div style={{width:52,height:52,borderRadius:10,overflow:"hidden",background:C2,flexShrink:0}}>
+                  {r.thumb?<img src={r.thumb} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                    :<div style={{height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>🍽️</div>}
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:600,lineHeight:1.3}}>{r.name}</div>
+                  <div style={{fontSize:12,color:MU}}>⏱ {r.time} хв · 🔥 ~{r.kcal} ккал</div>
+                </div>
+                <button onClick={()=>rem(day,meal,i)} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:22}}>×</button>
+              </div>
+            ))}
+            {!items.length&&<div style={{fontSize:13,color:MU,paddingTop:4,fontStyle:"italic"}}>Порожньо — в Рецептах натисни +</div>}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// ─── CALORIES PAGE ────────────────────────────────
+const CaloriesPage=({apiKey})=>{
+  const[diary,setDiary]=useLS("khawk_diary",[]);
+  const[goal,setGoal]=useLS("khawk_goal",2000);
+  const[aiQ,setAiQ]=useState("");
+  const[aiLoad,setAiLoad]=useState(false);
+  const[aiRes,setAiRes]=useState(null);
+  const[man,setMan]=useState({name:"",e:"🍽️",kcal:"",p:"",f:"",c:""});
+
+  const tot=diary.reduce((a,x)=>({kcal:a.kcal+(+x.kcal||0),p:a.p+(+x.p||0),f:a.f+(+x.f||0),c:a.c+(+x.c||0)}),{kcal:0,p:0,f:0,c:0});
+  const pct=Math.min(tot.kcal/goal,1);
+  const circ=2*Math.PI*54;
+
+  const askAI=async()=>{
+    if(!aiQ.trim())return;
+    if(!apiKey){alert("Потрібен Claude API ключ → ⚙️");return;}
+    setAiLoad(true);setAiRes(null);
+    try{
+      const raw=await claude(apiKey,[{role:"user",content:`Порахуй калорії для: "${aiQ}". ТІЛЬКИ JSON без markdown: {"name":"назва","e":"emoji","kcal":число,"p":число,"f":число,"c":число,"note":"порада 1 речення"}`}],"Ти нутриціолог. Відповідай тільки JSON.",400);
+      setAiRes(JSON.parse(raw.replace(/```json|```/g,"").trim()));
+    }catch(ex){alert("Помилка: "+ex.message);}
+    setAiLoad(false);
+  };
+
+  const addEntry=e=>setDiary(p=>[...p,{...e,id:Date.now(),time:new Date().toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"})}]);
+  const di={background:C2,border:`1px solid ${BR}`,borderRadius:8,padding:"9px 10px",fontSize:13,color:TX,outline:"none"};
+
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{fontWeight:800,fontSize:26,marginBottom:14}}>📊 Калорії</div>
+
+      <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+        <div style={{position:"relative",width:130,height:130}}>
+          <svg width="130" height="130" viewBox="0 0 130 130" style={{transform:"rotate(-90deg)"}}>
+            <circle cx="65" cy="65" r="54" fill="none" stroke={BR} strokeWidth={9}/>
+            <circle cx="65" cy="65" r="54" fill="none" stroke={pct>0.95?A:G} strokeWidth={9}
+              strokeDasharray={circ} strokeDashoffset={circ-pct*circ} strokeLinecap="round" style={{transition:"all .8s"}}/>
+          </svg>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontWeight:900,fontSize:24,lineHeight:1}}>{tot.kcal}</div>
+            <div style={{fontSize:10,color:MU}}>/ {goal} ккал</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:10,background:C,borderRadius:12,padding:"10px 14px",marginBottom:12}}>
+        <span style={{fontSize:13,color:MU}}>Ціль:</span>
+        <input type="number" value={goal} onChange={e=>setGoal(+e.target.value)} style={{...di,width:80,textAlign:"center"}}/>
+        <span style={{fontSize:13,color:MU}}>ккал</span>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+        {[{l:"Білки",v:Math.round(tot.p)+"г",c:G},{l:"Жири",v:Math.round(tot.f)+"г"},{l:"Вугл.",v:Math.round(tot.c)+"г"}].map((m,i)=>(
+          <div key={i} style={{background:C,borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+            <div style={{fontWeight:800,fontSize:18,color:m.c||TX}}>{m.v}</div>
+            <div style={{fontSize:11,color:MU}}>{m.l}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* AI */}
+      <div style={{background:C,borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>🤖 AI підрахунок</div>
+        <div style={{fontSize:12,color:MU,marginBottom:10}}>Напиши що з'їв — AI порахує калорії і БЖВ</div>
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <input value={aiQ} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&askAI()} placeholder="склянка соку, тарілка борщу, 2 яйця..." style={{...di,flex:1}}/>
+          <button onClick={askAI} disabled={aiLoad} style={{padding:"9px 16px",background:aiLoad?"#444":A,border:"none",color:"#fff",borderRadius:10,cursor:aiLoad?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>{aiLoad?"⏳":"→"}</button>
+        </div>
+        {aiRes&&(
+          <div className="fade" style={{background:C2,borderRadius:12,padding:14}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+              <span style={{fontSize:32}}>{aiRes.e}</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:700,fontSize:15}}>{aiRes.name}</div>
+                {aiRes.note&&<div style={{fontSize:12,color:MU,marginTop:2}}>{aiRes.note}</div>}
+              </div>
+              <div style={{fontWeight:900,fontSize:26,color:A}}>{aiRes.kcal}</div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:12}}>
+              {[["Б",aiRes.p+"г",G],["Ж",aiRes.f+"г",null],["В",aiRes.c+"г",null]].map(([l,v,c],i)=>(
+                <div key={i} style={{background:BG,borderRadius:8,padding:"8px",textAlign:"center"}}>
+                  <div style={{fontWeight:700,color:c||TX}}>{v}</div>
+                  <div style={{fontSize:10,color:MU}}>{l}</div>
+                </div>
+              ))}
+            </div>
+            <button onClick={()=>{addEntry({name:aiRes.name,e:aiRes.e,kcal:+aiRes.kcal,p:+aiRes.p,f:+aiRes.f,c:+aiRes.c});setAiRes(null);setAiQ("");}} style={{width:"100%",padding:11,background:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Додати в щоденник</button>
+          </div>
+        )}
+      </div>
+
+      {/* MANUAL */}
+      <div style={{background:C,borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>✍️ Вручну</div>
+        <div style={{display:"grid",gridTemplateColumns:"44px 1fr",gap:8,marginBottom:8}}>
+          <input value={man.e} onChange={e=>setMan(p=>({...p,e:e.target.value}))} style={{...di,fontSize:22,textAlign:"center",padding:"6px 2px"}} maxLength={2}/>
+          <input value={man.name} onChange={e=>setMan(p=>({...p,name:e.target.value}))} placeholder="Назва страви" style={{...di,width:"100%"}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+          {[["kcal","Ккал"],["p","Білки"],["f","Жири"],["c","Вугл."]].map(([k,l])=>(
+            <input key={k} value={man[k]} onChange={e=>setMan(p=>({...p,[k]:e.target.value}))} placeholder={l} type="number" style={{...di,textAlign:"center"}}/>
+          ))}
+        </div>
+        <button onClick={()=>{if(!man.name.trim())return;addEntry({name:man.name,e:man.e,kcal:+man.kcal||0,p:+man.p||0,f:+man.f||0,c:+man.c||0});setMan({name:"",e:"🍽️",kcal:"",p:"",f:"",c:""});}} style={{width:"100%",padding:11,background:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Додати</button>
+      </div>
+
+      {!diary.length&&<div style={{textAlign:"center",padding:"20px",color:MU}}>Щоденник порожній</div>}
+      {diary.map(e=>(
+        <div key={e.id} style={{background:C,borderRadius:12,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:24}}>{e.e}</div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:14,fontWeight:600}}>{e.name}</div>
+            <div style={{fontSize:12,color:MU}}>Б:{e.p}г · Ж:{e.f}г · В:{e.c}г · {e.time}</div>
+          </div>
+          <div style={{fontWeight:800,fontSize:18,color:A}}>{e.kcal}</div>
+          <button onClick={()=>setDiary(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:20}}>×</button>
+        </div>
+      ))}
+      {diary.length>0&&<button onClick={()=>setDiary([])} style={{width:"100%",padding:11,background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:12,fontSize:13,cursor:"pointer",marginTop:4,marginBottom:16}}>🗑 Очистити щоденник</button>}
+    </div>
+  );
+};
+
+// ─── CHAT PAGE ────────────────────────────────────
+const ChatPage=({apiKey})=>{
+  const[msgs,setMsgs]=useState([{r:"ai",t:"Привіт! 👋\n\nЯ твій кухонний AI асистент. Допомагаю з:\n• Рецептами і порадами\n• Калоріями будь-якої страви  \n• Заміною інгредієнтів\n• Плануванням харчування\n\nПитай що завгодно 🍽️"}]);
+  const[inp,setInp]=useState("");
+  const[load,setLoad]=useState(false);
+  const[hist,setHist]=useState([]);
+  const bot=useRef();
+  useEffect(()=>{bot.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+
+  const send=async t=>{
+    if(!t.trim()||load)return;
+    if(!apiKey){alert("Потрібен API ключ → ⚙️");return;}
+    setInp("");
+    const nh=[...hist,{role:"user",content:t}];
+    setMsgs(p=>[...p,{r:"u",t},{r:"ai",t:"...",loading:true}]);
+    setLoad(true);
+    try{
+      const reply=await claude(apiKey,nh,"Ти кухонний AI асистент. Відповідай українською мовою, коротко і по суті. Допомагаєш з рецептами, харчуванням, калоріями, заміною інгредієнтів. Максимум 150 слів.");
+      setHist([...nh,{role:"assistant",content:reply}]);
+      setMsgs(p=>[...p.slice(0,-1),{r:"ai",t:reply}]);
+    }catch(e){setMsgs(p=>[...p.slice(0,-1),{r:"ai",t:"Помилка: "+e.message}]);}
+    setLoad(false);
+  };
+
+  const qs=["🔥 Скільки калорій у борщі?","🍗 Рецепт курки за 20 хвилин","🥗 Що здорово поїсти ввечері?","🔄 Чим замінити вершки?"];
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 62px)"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+        <div style={{fontWeight:800,fontSize:26,marginBottom:16}}>💬 AI Асистент</div>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{display:"flex",justifyContent:m.r==="u"?"flex-end":"flex-start",gap:8,marginBottom:14,alignItems:"flex-end"}}>
+            {m.r==="ai"&&<div style={{width:32,height:32,borderRadius:"50%",background:"#1a3a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🤖</div>}
+            <div style={{maxWidth:"80%",padding:"11px 15px",borderRadius:m.r==="u"?"18px 18px 4px 18px":"18px 18px 18px 4px",background:m.r==="u"?A:C,fontSize:14,lineHeight:1.7,whiteSpace:"pre-wrap",color:m.loading?MU:TX,fontStyle:m.loading?"italic":"normal"}}>{m.t}</div>
+            {m.r==="u"&&<div style={{width:32,height:32,borderRadius:"50%",background:C2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>👤</div>}
+          </div>
+        ))}
+        {msgs.length<=1&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>{qs.map((q,i)=><button key={i} onClick={()=>send(q)} style={{background:C,border:`1px solid ${BR}`,color:SO,borderRadius:20,padding:"8px 14px",fontSize:12,cursor:"pointer"}}>{q}</button>)}</div>}
+        <div ref={bot}/>
+      </div>
+      <div style={{padding:"10px 16px",background:BG,borderTop:`1px solid ${BR}`,display:"flex",gap:8}}>
+        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send(inp)} placeholder="Запитай..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:24,padding:"11px 16px",fontSize:14,color:TX,outline:"none"}}/>
+        <button onClick={()=>send(inp)} disabled={load||!inp.trim()} style={{padding:"11px 20px",background:load||!inp.trim()?"#444":A,color:"#fff",border:"none",borderRadius:24,fontSize:16,fontWeight:700,cursor:load||!inp.trim()?"not-allowed":"pointer"}}>➤</button>
+      </div>
+    </div>
+  );
+};
+
+// ─── SHOP PAGE ────────────────────────────────────
+const ShopPage=({shop,setShop})=>{
+  const[inp,setInp]=useState("");
+  const add=()=>{if(!inp.trim())return;setShop(p=>[...p,{id:Date.now(),name:inp.trim(),from:"вручну",bought:false}]);setInp("");};
+  const grps=shop.reduce((a,i)=>{(a[i.from]=a[i.from]||[]).push(i);return a},{});
+
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontWeight:800,fontSize:26}}>🛒 Покупки</div>
+        <span style={{fontSize:13,color:MU}}>{shop.filter(i=>!i.bought).length} залишилось</span>
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Додати вручну..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px 14px",fontSize:14,color:TX,outline:"none"}}/>
+        <button onClick={add} style={{background:A,border:"none",color:"#fff",borderRadius:10,padding:"0 18px",fontSize:20,cursor:"pointer",fontWeight:700}}>+</button>
+      </div>
+      {!shop.length&&<div style={{textAlign:"center",padding:"50px 20px",color:MU}}><div style={{fontSize:50,marginBottom:12}}>🛒</div><div style={{fontWeight:700,fontSize:18,marginBottom:6}}>Список порожній</div><div style={{fontSize:14}}>Згенеруй раціон — список сформується автоматично</div></div>}
+      {Object.entries(grps).map(([from,items])=>(
+        <div key={from} style={{background:C,borderRadius:14,overflow:"hidden",marginBottom:12}}>
+          <div style={{padding:"10px 16px",fontWeight:700,fontSize:12,color:MU,borderBottom:`1px solid ${BR}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>{from}</span>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span>{items.filter(i=>i.bought).length}/{items.length}</span>
+              <button onClick={()=>setShop(p=>p.filter(i=>i.from!==from))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16}}>🗑</button>
+            </div>
+          </div>
+          {items.map(item=>(
+            <div key={item.id} onClick={()=>setShop(p=>p.map(i=>i.id===item.id?{...i,bought:!i.bought}:i))} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${BR}`,cursor:"pointer",opacity:item.bought?.4:1}}>
+              <div style={{width:22,height:22,borderRadius:6,border:item.bought?"none":`2px solid ${BR}`,background:item.bought?G:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff",fontSize:13}}>{item.bought?"✓":""}</div>
+              <div style={{flex:1,fontSize:14,textDecoration:item.bought?"line-through":"none"}}>{item.name}</div>
+              <button onClick={e=>{e.stopPropagation();setShop(p=>p.filter(i=>i.id!==item.id));}} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:18}}>×</button>
+            </div>
+          ))}
+        </div>
+      ))}
+      {shop.some(i=>i.bought)&&<button onClick={()=>setShop(p=>p.filter(i=>!i.bought))} style={{width:"100%",padding:12,background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:12,fontSize:13,cursor:"pointer",marginTop:4,marginBottom:16}}>🗑 Видалити куплені</button>}
+    </div>
+  );
+};
+
+// ─── SETTINGS PAGE ────────────────────────────────
+const SettingsPage=({apiKey,setApiKey})=>{
+  const[k,setK]=useState(apiKey);
+  const[ok,setOk]=useState(false);
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{fontWeight:800,fontSize:26,marginBottom:20}}>⚙️ Налаштування</div>
+      <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>🔑 Claude API ключ</div>
+        <div style={{fontSize:13,color:MU,marginBottom:12,lineHeight:1.6}}>Потрібен для AI чату і підрахунку калорій. Зберігається тільки на твоєму пристрої — нікуди не відправляється і не видимий іншим.</div>
+        <input type="password" value={k} onChange={e=>setK(e.target.value)} placeholder="sk-ant-api03-..." style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",fontSize:13,color:TX,outline:"none",width:"100%",fontFamily:"monospace",marginBottom:12}}/>
+        <button onClick={()=>{setApiKey(k);setOk(true);setTimeout(()=>setOk(false),2000);}} style={{width:"100%",padding:12,background:ok?G:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer",transition:"background .3s"}}>{ok?"✓ Збережено!":"Зберегти ключ"}</button>
+        {apiKey&&<div style={{fontSize:12,color:G,marginTop:8,textAlign:"center"}}>✓ Ключ активний</div>}
+      </div>
+      <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>📱 Додати на iPhone як додаток</div>
+        <div style={{fontSize:13,color:MU,lineHeight:1.8}}>
+          1. Відкрий в <strong style={{color:TX}}>Safari</strong><br/>
+          2. Натисни кнопку поділитись <strong style={{color:TX}}>↑</strong><br/>
+          3. "<strong style={{color:TX}}>Додати на екран Дому</strong>"<br/>
+          4. 🎉 Буде як справжній додаток!
+        </div>
+      </div>
+      <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:8}}>🌐 Рецепти</div>
+        <div style={{fontSize:13,color:MU,lineHeight:1.6}}>Рецепти з TheMealDB — відкрита безкоштовна база з <strong style={{color:TX}}>6000+ страв</strong> з усього світу. З фото, інгредієнтами і кроками. Без реєстрації.</div>
+      </div>
+      <div style={{background:"rgba(232,83,10,.1)",border:`1px solid ${A}`,borderRadius:14,padding:16,marginBottom:16}}>
+        <div style={{fontWeight:700,fontSize:14,color:A,marginBottom:6}}>🔒 Безпека API ключа</div>
+        <div style={{fontSize:13,color:"#ffb89a",lineHeight:1.6}}>Репозиторій публічний — але ключ в код не вписаний. Він зберігається тільки в localStorage твого браузера. Інші люди не можуть його використати.</div>
+      </div>
+    </div>
+  );
+};
+
+// ─── APP ─────────────────────────────────────────
+const App=()=>{
+  const[tab,setTab]=useState("recipes");
+  const[apiKey,setApiKey]=useLS("khawk_key","");
+  const[faves,setFaves]=useLS("khawk_faves",[]);
+  const[plan,setPlan]=useLS("khawk_plan",{});
+  const[shop,setShop]=useLS("khawk_shop",[]);
+  const[srv,setSrv]=useLS("khawk_srv",4);
+  const[myRecs,setMyRecs]=useLS("khawk_mine",[]);
+  const[detail,setDetail]=useState(null);
+  const[addTo,setAddTo]=useState(null);
+  const[cached,setCached]=useState([]);
+
+  const toggleFav=id=>setFaves(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
+
+  const confirmPlan=(r,meal)=>{
+    const k=`0-${meal}`;
+    setPlan(p=>({...p,[k]:[...(p[k]||[]),r]}));
+    r.ing.forEach(i=>setShop(p=>[...p,{id:Date.now()+Math.random(),name:`${i.a} ${i.n}`.trim(),from:r.name,bought:false}]));
+    setAddTo(null);
+  };
+
+  const TABS=[
+    {id:"recipes",icon:"📖",label:"Рецепти"},
+    {id:"plan",icon:"📅",label:"Раціон"},
+    {id:"calories",icon:"📊",label:"Калорії"},
+    {id:"chat",icon:"💬",label:"AI Чат"},
+    {id:"shop",icon:"🛒",label:"Покупки"},
+    {id:"settings",icon:"⚙️",label:"Налашт."},
+  ];
+
+  return(
+    <div style={{background:BG,minHeight:"100dvh",color:TX,display:"flex",flexDirection:"column"}}>
+
+      {detail&&<RDetail r={detail} srv={srv} setSrv={setSrv} onBack={()=>setDetail(null)} onPlan={r=>{setAddTo(r);setDetail(null);}} onDiary={()=>{}}/>}
+
+      {addTo&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:90,display:"flex",alignItems:"flex-end",maxWidth:430,margin:"0 auto"}}>
+          <div style={{background:C,borderRadius:"24px 24px 0 0",padding:"24px 20px 36px",width:"100%"}}>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:4,lineHeight:1.3}}>{addTo.name}</div>
+            <div style={{color:MU,fontSize:13,marginBottom:18}}>Вибери прийом їжі:</div>
+            {PMLS.map(m=>(
+              <button key={m} onClick={()=>confirmPlan(addTo,m)} style={{display:"flex",alignItems:"center",gap:14,width:"100%",background:C2,border:"none",color:TX,borderRadius:14,padding:"14px 18px",fontSize:15,cursor:"pointer",marginBottom:8,fontWeight:500}}>
+                <span style={{fontSize:24}}>{PICO[m]}</span>{m}
+              </button>
+            ))}
+            <button onClick={()=>setAddTo(null)} style={{width:"100%",background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:14,padding:13,fontSize:14,cursor:"pointer",marginTop:4}}>Скасувати</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{flex:1,overflowY:tab==="chat"?"hidden":"auto",paddingBottom:tab==="chat"?0:80}}>
+        {tab==="recipes"&&<RecipesPage faves={faves} onFav={toggleFav} onAdd={r=>setAddTo(r)} onOpen={r=>setDetail(r)} myRecs={myRecs} setMyRecs={setMyRecs} onCacheRecipes={r=>setCached(r)}/>}
+        {tab==="plan"&&<PlanPage plan={plan} setPlan={setPlan} shop={shop} setShop={setShop} srv={srv} setSrv={setSrv} cached={cached}/>}
+        {tab==="calories"&&<CaloriesPage apiKey={apiKey}/>}
+        {tab==="chat"&&<ChatPage apiKey={apiKey}/>}
+        {tab==="shop"&&<ShopPage shop={shop} setShop={setShop}/>}
+        {tab==="settings"&&<SettingsPage apiKey={apiKey} setApiKey={setApiKey}/>}
+      </div>
+
+      <div style={{background:"#111",display:"flex",position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,borderTop:`1px solid ${BR}`,zIndex:50}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"10px 2px 8px",border:"none",background:"transparent",color:tab===t.id?A:MU,cursor:"pointer",fontSize:9,fontWeight:tab===t.id?700:400,borderTop:tab===t.id?`2px solid ${A}`:"2px solid transparent"}}>
+            <span style={{fontSize:19}}>{t.icon}</span>{t.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+
+</body>
+</html>
