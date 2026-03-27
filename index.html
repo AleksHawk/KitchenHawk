@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
@@ -23,11 +24,15 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <div id="root"></div>
 
 <!-- База рецептів — додавай більше рецептів в recipes.js -->
+
 <script src="recipes.js"></script>
 
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo,useCallback}=React;
 
@@ -688,5 +693,6 @@ const App=()=>{
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
 </script>
+
 </body>
 </html>
