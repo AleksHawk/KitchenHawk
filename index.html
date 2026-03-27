@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KitchenHawk">
@@ -13,7 +13,7 @@
 html,body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#f0f0f0;overscroll-behavior:none}
 #root{max-width:430px;margin:0 auto;min-height:100dvh}
 ::-webkit-scrollbar{width:0;height:0}
-input,select,textarea,button{font-family:inherit;font-size:16px}
+input,select,textarea,button{font-family:inherit}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .fade{animation:fadeUp .25s ease}
@@ -22,44 +22,8 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <body>
 <div id="root"></div>
 
-<!-- РЕЦЕПТИ ВБУДОВАНІ -->
-<script>
-window.RECIPES_DB = [
-  {id:"b1",name:"Омлет з беконом",cat:"Сніданок",time:10,kcal:280,p:22,f:18,c:3,e:"🍳",tags:["швидко","калорійно"],main:["яйця","бекон"],ing:[{n:"яйця",a:"3 шт"},{n:"бекон",a:"100g"},{n:"масло",a:"20g"}],steps:["Нарізь бекон","Розігрій масло","Обсмажь бекон","Розбий яйця","Готуй 5-7 хвилин"]},
-  {id:"b2",name:"Каша вівсяна",cat:"Сніданок",time:15,kcal:220,p:7,f:5,c:38,e:"🥣",tags:["корисно","вітаміни"],main:["вівсяні пластівці","молоко"],ing:[{n:"вівсяні пластівці",a:"60g"},{n:"молоко",a:"250ml"},{n:"цукор",a:"10g"}],steps:["Закип молоко","Насип вівсяні","Варій 10 хвилин","Додай цукор"]},
-  {id:"b3",name:"Сирники",cat:"Сніданок",time:20,kcal:240,p:12,f:14,c:18,e:"🥞",tags:["улюблене","швидко"],main:["творог","яйця"],ing:[{n:"творог",a:"400g"},{n:"яйця",a:"2 шт"},{n:"манна каша",a:"30g"},{n:"цукор",a:"20g"}],steps:["Змішай творог з яйцями","Додай манку","Залиш 10 хвилин","Обсмажь 3-4 хвилини"]},
-  {id:"b4",name:"Панкейки",cat:"Сніданок",time:20,kcal:320,p:10,f:14,c:38,e:"🥞",tags:["святковий","швидко"],main:["мука","яйця"],ing:[{n:"мука",a:"200g"},{n:"яйця",a:"2 шт"},{n:"молоко",a:"250ml"},{n:"розпушувач",a:"10g"}],steps:["Приготуй тісто","Обсмажь панкейки","Подавай з медом"]},
-  {id:"b5",name:"Авокадо на тості",cat:"Сніданок",time:8,kcal:290,p:14,f:15,c:28,e:"🥑",tags:["здоровий","швидко"],main:["авокадо","хліб"],ing:[{n:"хліб",a:"2 шт"},{n:"авокадо",a:"1 шт"},{n:"яйця",a:"2 шт"}],steps:["Підсмаж хліб","Розсмажь авокадо","Поклади яйця"]},
-  
-  {id:"s1",name:"Борщ",cat:"Суп",time:90,kcal:85,p:6,f:3,c:12,e:"🍲",tags:["традиційний","здоровий"],main:["буряк","капуста","м'ясо"],ing:[{n:"буряк",a:"3 шт"},{n:"капуста",a:"300g"},{n:"картопля",a:"2 шт"},{n:"м'ясо",a:"300g"}],steps:["Варій м'ясо 20 хв","Нарізь овочі","Варій все разом 40 хв"]},
-  {id:"s2",name:"Суп з куркою",cat:"Суп",time:40,kcal:110,p:12,f:4,c:8,e:"🍗",tags:["швидко","легко"],main:["курка","картопля"],ing:[{n:"курка",a:"300g"},{n:"картопля",a:"2 шт"},{n:"морквина",a:"1 шт"}],steps:["Варій курку","Додай овочі","Варій 20 хвилин"]},
-  {id:"s3",name:"Крем-суп з грибів",cat:"Суп",time:40,kcal:120,p:6,f:7,c:10,e:"🍄",tags:["креативний","смачний"],main:["гриби","молоко"],ing:[{n:"гриби",a:"400g"},{n:"молоко",a:"400ml"},{n:"картопля",a:"2 шт"}],steps:["Обсмажь гриби","Варій з картоплею","Збий блендером"]},
-  {id:"s4",name:"Щавельник",cat:"Суп",time:35,kcal:55,p:4,f:2,c:7,e:"🌿",tags:["літній","легко"],main:["щавель","картопля"],ing:[{n:"щавель",a:"150g"},{n:"картопля",a:"3 шт"},{n:"яйця",a:"2 шт"}],steps:["Варій картоплю","Додай щавель","Додай яйця"]},
-  {id:"s5",name:"Суп з фасолі",cat:"Суп",time:80,kcal:130,p:9,f:2,c:20,e:"🫘",tags:["корисно","легко"],main:["фасоль","картопля"],ing:[{n:"фасоль",a:"200g"},{n:"морквина",a:"2 шт"},{n:"картопля",a:"2 шт"}],steps:["Замочи фасоль на ніч","Варій 30 хв","Додай овочі"]},
-
-  {id:"l1",name:"Котлети м'ясні",cat:"Обід",time:35,kcal:280,p:22,f:16,c:8,e:"🍖",tags:["традиційний","сімейне"],main:["м'ясо","яйця"],ing:[{n:"м'ясо фарш",a:"400g"},{n:"яйця",a:"1 шт"},{n:"хліб",a:"50g"}],steps:["Приготуй фарш","Сформуй котлети","Обсмажь 5-7 хвилин"]},
-  {id:"l2",name:"Курка гриль",cat:"Обід",time:50,kcal:320,p:38,f:14,c:12,e:"🍗",tags:["святковий","смачний"],main:["курка","спеції"],ing:[{n:"курка",a:"600g"},{n:"лимон",a:"1 шт"},{n:"часник",a:"3 зубці"}],steps:["Натри курку спеціями","Запікай при 200°C 30 хв"]},
-  {id:"l3",name:"Плов",cat:"Обід",time:60,kcal:420,p:24,f:18,c:40,e:"🍚",tags:["креативний","святковий"],main:["рис","м'ясо"],ing:[{n:"рис",a:"300g"},{n:"м'ясо",a:"300g"},{n:"морквина",a:"2 шт"}],steps:["Обсмажь м'ясо","Додай овочи","Додай рис","Варій 30 хв"]},
-  {id:"l4",name:"Рибні тефтелі",cat:"Обід",time:40,kcal:240,p:28,f:10,c:6,e:"🐟",tags:["корисно","смачний"],main:["риба","яйця"],ing:[{n:"риба фарш",a:"400g"},{n:"яйця",a:"1 шт"},{n:"сметана",a:"100g"}],steps:["Сформуй тефтелі","Обсмажь","Потушуй в сметані 20 хв"]},
-  {id:"l5",name:"Макарони з маслом",cat:"Обід",time:20,kcal:380,p:12,f:14,c:54,e:"🍝",tags:["швидко","діткам"],main:["макаронне","масло"],ing:[{n:"макаронне",a:"400g"},{n:"масло",a:"30g"},{n:"сир",a:"50g"}],steps:["Варій макаронне","Додай масло та сир"]},
-
-  {id:"d1",name:"Яйця помідорці",cat:"Вечеря",time:15,kcal:180,p:14,f:10,c:8,e:"🍅",tags:["швидко","легко"],main:["яйця","помідори"],ing:[{n:"яйця",a:"3 шт"},{n:"помідори",a:"2 шт"},{n:"масло",a:"20g"}],steps:["Нарізь помідори","Готуй з яйцями 8-10 хвилин"]},
-  {id:"d2",name:"Рибний стейк",cat:"Вечеря",time:25,kcal:280,p:32,f:14,c:2,e:"🐟",tags:["святковий","здоровий"],main:["риба","лимон"],ing:[{n:"риба стейк",a:"200g"},{n:"лимон",a:"0.5"}],steps:["Приправ рибу","Готуй на гарилі 5-7 хвилин"]},
-  {id:"d3",name:"Філе куриці у соусі",cat:"Вечеря",time:35,kcal:320,p:36,f:14,c:8,e:"🍗",tags:["святковий","смачний"],main:["курка","сметана"],ing:[{n:"філе куриці",a:"300g"},{n:"сметана",a:"100g"},{n:"часник",a:"2 зубці"}],steps:["Обсмажь філе","Залий сметаною","Тушуй 20 хвилин"]},
-  {id:"d4",name:"Каша гречана з грибами",cat:"Вечеря",time:40,kcal:280,p:10,f:8,c:42,e:"🥘",tags:["корисно","смачний"],main:["гречка","гриби"],ing:[{n:"гречневиця",a:"200g"},{n:"гриби",a:"200g"},{n:"цибуля",a:"1 шт"}],steps:["Обсмажь гриби та цибулю","Додай гречневицю","Варій 25 хвилин"]},
-  {id:"d5",name:"Паста Карбонара",cat:"Вечеря",time:25,kcal:420,p:18,f:24,c:36,e:"🍝",tags:["італійський","смачний"],main:["макаронне","бекон"],ing:[{n:"макаронне",a:"300g"},{n:"бекон",a:"100g"},{n:"яйця",a:"2 шт"}],steps:["Варій макаронне","Обсмажь бекон","Поєднай з яйцями"]},
-
-  {id:"de1",name:"Чізкейк",cat:"Десерт",time:120,kcal:380,p:10,f:22,c:40,e:"🍰",tags:["святковий","смачний"],main:["сир","печиво"],ing:[{n:"вершки сир",a:"400g"},{n:"печиво",a:"150g"},{n:"яйця",a:"3 шт"}],steps:["Приготуй основу","Приготуй сир. мас","Запікай 50 хв"]},
-  {id:"de2",name:"Панна-котта",cat:"Десерт",time:30,kcal:220,p:5,f:14,c:20,e:"🍓",tags:["елегантний","смачний"],main:["сливки","желатин"],ing:[{n:"сливки",a:"400ml"},{n:"желатин",a:"10g"},{n:"цукор",a:"50g"}],steps:["Розігрій сливки","Розчини желатин","Охолодь 4 години"]},
-  {id:"de3",name:"Брауні",cat:"Десерт",time:45,kcal:320,p:5,f:18,c:38,e:"🍫",tags:["шоколадний","смачний"],main:["шоколад","яйця"],ing:[{n:"шоколад",a:"150g"},{n:"масло",a:"100g"},{n:"яйця",a:"2 шт"}],steps:["Розтопи шоколад","Запікай 25-30 хв"]},
-
-  {id:"sn1",name:"Салат Оліів'є",cat:"Перекус",time:25,kcal:280,p:8,f:18,c:22,e:"🥗",tags:["традиційний","святковий"],main:["картопля","м'ясо"],ing:[{n:"картопля",a:"3 шт"},{n:"м'ясо",a:"150g"},{n:"яйця",a:"3 шт"}],steps:["Варій та нарізь компоненти","Поєднай з майонезом"]},
-  {id:"sn2",name:"Гуакамоле",cat:"Перекус",time:10,kcal:240,p:3,f:20,c:12,e:"🥑",tags:["здоровий","креативний"],main:["авокадо","помідори"],ing:[{n:"авокадо",a:"2 шт"},{n:"помідори",a:"2 шт"}],steps:["Розм'ясти авокадо","Додай помідори","Приправ сіллю"]},
-  {id:"sn3",name:"Хумус",cat:"Перекус",time:15,kcal:180,p:8,f:10,c:14,e:"🫘",tags:["здоровий","веган"],main:["нут","кунжутна паста"],ing:[{n:"нут",a:"400g"},{n:"кунжутна паста",a:"40g"},{n:"лимон",a:"1 шт"}],steps:["Збий нут в блендері","Додай кунжутну пасту","Додай лимон"]},
-];
-
-console.log(`✅ ${window.RECIPES_DB.length} рецептів завантажено`);
-</script>
+<!-- База рецептів — додавай більше рецептів в recipes.js -->
+<script src="recipes.js"></script>
 
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -76,55 +40,15 @@ const useLS=(key,def)=>{
   return[v,set];
 };
 
-// ── CLAUDE API (ВИПРАВЛЕНО) ──
+// ── CLAUDE API ──
 const claude=async(key,msgs,sys="",max=800)=>{
-  console.log("📤 送信中...", {key: key?.substring(0,10)+"***", msgs: msgs.length, sys: sys.substring(0,50)});
-  try{
-    const r=await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "x-api-key":key,
-        "anthropic-version":"2023-06-01"
-      },
-      body:JSON.stringify({
-        model:"claude-sonnet-4-20250514",
-        max_tokens:max,
-        system:sys,
-        messages:msgs
-      })
-    });
-    
-    const d=await r.json();
-    console.log("📥 Відповідь:", {status: r.status, error: d.error, content: d.content?.[0]?.text?.substring(0,50)});
-    
-    if(d.error)throw new Error(d.error.message || JSON.stringify(d.error));
-    if(!d.content || !d.content[0])throw new Error("Порожня відповідь від API");
-    
-    return d.content.map(b=>b.text||"").join("");
-  }catch(e){
-    console.error("❌ API Помилка:", e);
-    throw e;
-  }
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max,system:sys,messages:msgs})});
+  const d=await r.json();
+  if(d.error)throw new Error(d.error.message);
+  return d.content.map(b=>b.text||"").join("");
 };
 
-// ── VOICE ──
-const useVoice=()=>{
-  const syn=window.speechSynthesis;
-  return {
-    speak:(text,lang="uk-UA")=>{
-      if(!text)return;
-      const u=new SpeechSynthesisUtterance(text.substring(0,200));
-      u.lang=lang;
-      u.rate=0.9;
-      syn.cancel();
-      syn.speak(u);
-    },
-    stop:()=>syn.cancel()
-  };
-};
-
-// ── WEEK DATES ──
+// ── GET REAL WEEK DATES ──
 const getWeekDates=()=>{
   const today=new Date();
   const dow=today.getDay();
@@ -140,25 +64,29 @@ const getWeekDates=()=>{
 
 const CATS=["Всі","Сніданок","Суп","Обід","Вечеря","Десерт","Перекус"];
 const DAYS_SHORT=["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
-const PLAN_MEALS=["Сні��анок","Суп","Вечеря"];
+const PLAN_MEALS=["Сніданок","Суп","Вечеря"];
 const MEAL_ICONS={Сніданок:"☀️",Суп:"🍲",Вечеря:"🌙"};
 
 // ── RECIPE CARD ──
 const RCard=({r,onOpen,onAdd,onFav,faved})=>(
   <div className="fade" style={{background:C,borderRadius:16,overflow:"hidden",marginBottom:12,cursor:"pointer"}} onClick={onOpen}>
-    <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"14px 14px 10px",display:"flex",gap:12}}>
+    <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"14px 14px 10px",display:"flex",gap:12,position:"relative"}}>
       <div style={{fontSize:42,flexShrink:0,lineHeight:1}}>{r.e||"🍽️"}</div>
       <div style={{flex:1,minWidth:0}}>
         <div style={{fontWeight:700,fontSize:15,lineHeight:1.3,marginBottom:6}}>{r.name}</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>⏱ {r.time} хв</span>
-          <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>🔥 {r.kcal}</span>
+          <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>🔥 {r.kcal} ккал</span>
+          {r.batch&&<span style={{background:"rgba(255,107,53,.3)",borderRadius:20,padding:"2px 9px",fontSize:11}}>🔁 Batch</span>}
         </div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
         <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"rgba(0,0,0,.4)",border:"none",color:faved?"#ff6b6b":TX,borderRadius:"50%",width:32,height:32,fontSize:17,cursor:"pointer"}}>♥</button>
         <button onClick={e=>{e.stopPropagation();onAdd();}} style={{background:A,border:"none",color:"#fff",borderRadius:"50%",width:32,height:32,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
       </div>
+    </div>
+    <div style={{padding:"6px 14px 10px",display:"flex",gap:4,flexWrap:"wrap"}}>
+      {(r.tags||[]).slice(0,3).map((t,i)=><span key={i} style={{background:C2,borderRadius:10,padding:"2px 8px",fontSize:11,color:SO}}>{t}</span>)}
     </div>
   </div>
 );
@@ -168,15 +96,12 @@ const RDetail=({r,srv,setSrv,onBack,onPlan})=>{
   const[astep,setAstep]=useState(-1);
   const[tsec,setTsec]=useState(0);
   const[ton,setTon]=useState(false);
-  const{speak}=useVoice();
   const ref=useRef();
-  
   useEffect(()=>{
     if(ton&&tsec>0)ref.current=setTimeout(()=>setTsec(s=>s-1),1000);
-    else if(tsec===0&&ton){setTon(false);speak("Таймер закінчився");}
+    else if(tsec===0&&ton)setTon(false);
     return()=>clearTimeout(ref.current);
-  },[ton,tsec,speak]);
-  
+  },[ton,tsec]);
   const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
 
   return(
@@ -193,17 +118,36 @@ const RDetail=({r,srv,setSrv,onBack,onPlan})=>{
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <span style={{background:"rgba(255,255,255,.15)",borderRadius:20,padding:"4px 12px",fontSize:12}}>⏱ {r.time} хв</span>
           <span style={{background:"rgba(255,255,255,.15)",borderRadius:20,padding:"4px 12px",fontSize:12}}>📂 {r.cat}</span>
+          {r.batch&&<span style={{background:"rgba(255,107,53,.4)",borderRadius:20,padding:"4px 12px",fontSize:12}}>🔁 Batch</span>}
         </div>
       </div>
 
       <div style={{padding:"20px 20px 100px"}}>
+        {/* BATCH NOTE */}
+        {r.batch&&r.bn&&<div style={{background:"rgba(255,107,53,.12)",border:"1px solid #ff6b35",borderRadius:12,padding:"10px 14px",marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:12,color:"#ff6b35",marginBottom:3}}>🔁 Готуй на кілька днів:</div>
+          <div style={{fontSize:13,color:"#ffb89a"}}>{r.bn}</div>
+        </div>}
+
+        {/* COOKPAD LINK */}
+        {r.cookpad&&<a href={r.cookpad} target="_blank" rel="noreferrer" style={{display:"flex",alignItems:"center",gap:10,background:"rgba(255,87,34,.1)",border:"1px solid rgba(255,87,34,.3)",borderRadius:12,padding:"10px 14px",marginBottom:16,textDecoration:"none",color:TX}}>
+          <span style={{fontSize:20}}>📸</span>
+          <div>
+            <div style={{fontWeight:600,fontSize:13}}>Дивись фото і відео на Cookpad</div>
+            <div style={{fontSize:11,color:MU}}>cookpad.com/ua — покрокові фото</div>
+          </div>
+          <span style={{marginLeft:"auto",fontSize:16,color:A}}>→</span>
+        </a>}
+
+        {/* SERVINGS */}
         <div style={{display:"flex",alignItems:"center",gap:12,background:C,borderRadius:12,padding:"10px 16px",marginBottom:16}}>
-          <span style={{fontSize:13,color:MU,flex:1}}>Порцій:</span>
+          <span style={{fontSize:13,color:MU,flex:1}}>Кількість порцій:</span>
           <button onClick={()=>setSrv(s=>Math.max(1,s-1))} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:30,height:30,fontSize:20,cursor:"pointer"}}>−</button>
           <span style={{fontWeight:800,fontSize:20,minWidth:26,textAlign:"center"}}>{srv}</span>
           <button onClick={()=>setSrv(s=>s+1)} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:30,height:30,fontSize:20,cursor:"pointer"}}>+</button>
         </div>
 
+        {/* MACROS */}
         <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:20}}>
           {[{l:"Ккал",v:Math.round((r.kcal||0)*srv/4),c:A},{l:"Білки",v:Math.round((r.p||0)*srv/4)+"г",c:G},{l:"Жири",v:Math.round((r.f||0)*srv/4)+"г"},{l:"Вугл.",v:Math.round((r.c||0)*srv/4)+"г"}].map((m,i)=>(
             <div key={i} style={{background:C,borderRadius:12,padding:"10px 6px",textAlign:"center"}}>
@@ -213,6 +157,7 @@ const RDetail=({r,srv,setSrv,onBack,onPlan})=>{
           ))}
         </div>
 
+        {/* INGREDIENTS */}
         <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Інгредієнти</div>
         <div style={{background:C,borderRadius:14,overflow:"hidden",marginBottom:20}}>
           {(r.ing||[]).map((ing,i)=>(
@@ -224,22 +169,26 @@ const RDetail=({r,srv,setSrv,onBack,onPlan})=>{
           ))}
         </div>
 
+        {/* STEPS */}
         <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Приготування</div>
         {(r.steps||[]).map((step,i)=>{
           const mins=step.match(/(\d+)\s*хв/);
           const act=astep===i;
           return(
-            <div key={i} onClick={()=>setAstep(act?-1:i)} style={{display:"flex",gap:12,marginBottom:10,padding:"10px",background:act?C:"transparent",borderRadius:12,cursor:"pointer"}}>
-              <div style={{background:act?A:C2,color:"#fff",borderRadius:"50%",width:30,height:30,minWidth:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}}>{i+1}</div>
+            <div key={i} onClick={()=>setAstep(act?-1:i)} style={{display:"flex",gap:12,marginBottom:10,padding:"10px",background:act?C:"transparent",borderRadius:12,cursor:"pointer",transition:"background .2s"}}>
+              <div style={{background:act?A:C2,color:"#fff",borderRadius:"50%",width:30,height:30,minWidth:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13,transition:"background .2s"}}>{i+1}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:13,lineHeight:1.7,color:act?TX:SO}}>{step}</div>
-                {act&&mins&&<button onClick={e=>{e.stopPropagation();setTsec(parseInt(mins[1])*60);setTon(true);speak(`Таймер ${mins[1]} хвилин`);}} style={{marginTop:8,background:C2,border:"none",color:A,borderRadius:8,padding:"5px 14px",fontSize:12,cursor:"pointer",fontWeight:600}}>⏱ Таймер {mins[1]} хв</button>}
+                {act&&mins&&<button onClick={e=>{e.stopPropagation();setTsec(parseInt(mins[1])*60);setTon(true);}} style={{marginTop:8,background:C2,border:"none",color:A,borderRadius:8,padding:"5px 14px",fontSize:12,cursor:"pointer",fontWeight:600}}>⏱ Таймер {mins[1]} хв</button>}
               </div>
             </div>
           );
         })}
 
-        <button onClick={()=>onPlan(r)} style={{width:"100%",padding:14,background:A,border:"none",color:"#fff",borderRadius:12,fontWeight:700,fontSize:14,cursor:"pointer",marginTop:20}}>+ В раціон</button>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:20}}>
+          {r.cookpad&&<a href={r.cookpad} target="_blank" rel="noreferrer" style={{padding:14,background:C,border:`1px solid ${BR}`,color:TX,borderRadius:12,fontWeight:600,fontSize:13,cursor:"pointer",textAlign:"center",textDecoration:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>📸 Cookpad</a>}
+          <button onClick={()=>onPlan(r)} style={{padding:14,background:A,border:"none",color:"#fff",borderRadius:12,fontWeight:700,fontSize:14,cursor:"pointer",gridColumn:r.cookpad?"auto":"1/-1"}}>+ В раціон</button>
+        </div>
       </div>
     </div>
   );
@@ -250,6 +199,9 @@ const RecipesPage=({faves,onFav,onAdd,onOpen,myRecs,setMyRecs,apiKey})=>{
   const[sub,setSub]=useState("browse");
   const[cat,setCat]=useState("Всі");
   const[search,setSearch]=useState("");
+  const[batch,setBatch]=useState(false);
+  const[sort,setSort]=useState("def");
+  const[ingr,setIngr]=useState("");
   const[ttText,setTtText]=useState("");
   const[ttLoad,setTtLoad]=useState(false);
 
@@ -259,18 +211,33 @@ const RecipesPage=({faves,onFav,onAdd,onOpen,myRecs,setMyRecs,apiKey})=>{
   const filtered=useMemo(()=>{
     let r=allR;
     if(cat!=="Всі")r=r.filter(x=>x.cat===cat);
-    if(search){const q=search.toLowerCase();r=r.filter(x=>x.name.toLowerCase().includes(q));}
+    if(batch)r=r.filter(x=>x.batch);
+    if(search){const q=search.toLowerCase();r=r.filter(x=>x.name.toLowerCase().includes(q)||(x.main||[]).some(m=>m.toLowerCase().includes(q))||(x.tags||[]).some(t=>t.includes(q)));}
+    if(sort==="ta")r=[...r].sort((a,b)=>a.time-b.time);
+    else if(sort==="td")r=[...r].sort((a,b)=>b.time-a.time);
+    else if(sort==="ka")r=[...r].sort((a,b)=>a.kcal-b.kcal);
+    else if(sort==="kd")r=[...r].sort((a,b)=>b.kcal-a.kcal);
     return r;
-  },[allR,cat,search]);
+  },[allR,cat,batch,search,sort]);
+
+  const fridgeRes=useMemo(()=>{
+    if(!ingr.trim())return[];
+    const qs=ingr.toLowerCase().split(/[,\s]+/).filter(Boolean);
+    return allR.filter(r=>(r.main||[]).some(m=>qs.some(q=>m.toLowerCase().includes(q)))).sort((a,b)=>{
+      const sa=(a.main||[]).filter(m=>qs.some(q=>m.toLowerCase().includes(q))).length;
+      const sb=(b.main||[]).filter(m=>qs.some(q=>m.toLowerCase().includes(q))).length;
+      return sb-sa;
+    });
+  },[allR,ingr]);
 
   const importTT=async()=>{
     if(!ttText.trim())return;
     if(!apiKey){alert("Потрібен API ключ → ⚙️");return;}
     setTtLoad(true);
     try{
-      const raw=await claude(apiKey,[{role:"user",content:`Витягни рецепт JSON:\n{"name":"","cat":"Сніданок|Суп|Обід|Вечеря|Десерт","time":30,"kcal":250,"p":10,"f":12,"c":20,"e":"🍽️","ing":[{"n":"","a":""}],"steps":[""]}\n\nТекст:\n${ttText}`}],"Тільки JSON",500);
+      const raw=await claude(apiKey,[{role:"user",content:`Витягни рецепт з цього тексту. ТІЛЬКИ JSON:\n{"name":"назва","cat":"Сніданок або Суп або Обід або Вечеря або Десерт","time":хвилини,"kcal":число,"p":білки,"f":жири,"c":вуглеводи,"e":"emoji","tags":["тег"],"main":["головний інгредієнт"],"ing":[{"n":"інгредієнт","a":"кількість"}],"steps":["крок1","крок2"]}\n\nТекст:\n${ttText}`}],"Відповідай тільки JSON без markdown.",600);
       const parsed=JSON.parse(raw.replace(/```json|```/g,"").trim());
-      setMyRecs(p=>[{...parsed,id:"tt_"+Date.now()},...p]);
+      setMyRecs(p=>[{...parsed,id:"tt_"+Date.now(),source:"tiktok"},...p]);
       setTtText("");setSub("mine");
       alert(`✅ "${parsed.name}" збережено!`);
     }catch(e){alert("Помилка: "+e.message);}
@@ -281,69 +248,122 @@ const RecipesPage=({faves,onFav,onAdd,onOpen,myRecs,setMyRecs,apiKey})=>{
 
   return(
     <div style={{padding:"14px 16px 0"}}>
-      <div style={{fontWeight:800,fontSize:26,marginBottom:12}}>🍽️ Рецепти ({DB.length})</div>
+      <div style={{fontWeight:800,fontSize:26,marginBottom:12}}>🍽️ Рецепти</div>
 
       <div style={{display:"flex",background:C,borderRadius:20,padding:3,marginBottom:14,gap:2}}>
-        {[["browse","🔍 Пошук"],["tiktok","📱 TikTok"],["mine","⭐ Мої"]].map(([v,l])=>(
+        {[["browse","🔍 Пошук"],["fridge","🥬 З холодильника"],["tiktok","📱 TikTok"],["mine","⭐ Мої"]].map(([v,l])=>(
           <button key={v} onClick={()=>setSub(v)} style={{flex:1,background:sub===v?A:"transparent",border:"none",color:sub===v?"#fff":MU,borderRadius:18,padding:"7px 2px",fontSize:11,cursor:"pointer",fontWeight:sub===v?700:400}}>{l}</button>
         ))}
       </div>
 
+      {/* BROWSE */}
       {sub==="browse"&&<>
-        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Пошук..." style={{...inp,marginBottom:10}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Борщ, курка, картопля, шаурма..." style={{...inp,marginBottom:10}}/>
         <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
           {CATS.map(c=><button key={c} onClick={()=>setCat(c)} style={{background:cat===c?A:C,border:"none",color:cat===c?"#fff":MU,borderRadius:20,padding:"7px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap",fontWeight:cat===c?700:400}}>{c}</button>)}
         </div>
-        <div style={{fontSize:12,color:MU,marginBottom:10}}>📊 {filtered.length} рецептів</div>
+        <div style={{display:"flex",gap:8,marginBottom:12}}>
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{flex:1,background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"8px 10px",fontSize:12,color:TX,outline:"none",cursor:"pointer"}}>
+            <option value="def">Без сортування</option>
+            <option value="ta">⏱ Швидкі спочатку</option>
+            <option value="td">⏱ Довгі спочатку</option>
+            <option value="ka">🔥 Менше калорій</option>
+            <option value="kd">🔥 Більше калорій</option>
+          </select>
+          <button onClick={()=>setBatch(!batch)} style={{background:batch?"#ff6b35":C,border:batch?"none":`1px solid ${BR}`,color:batch?"#fff":MU,borderRadius:10,padding:"8px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>🔁 Batch</button>
+        </div>
+        <div style={{fontSize:12,color:MU,marginBottom:10}}>{filtered.length} рецептів у базі</div>
         {filtered.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>)}
       </>}
 
+      {/* FRIDGE */}
+      {sub==="fridge"&&<>
+        <div style={{fontSize:13,color:MU,marginBottom:8}}>Що є вдома? Введи через кому:</div>
+        <input value={ingr} onChange={e=>setIngr(e.target.value)} placeholder="курка, картопля, цибуля, помідори..." style={{...inp,marginBottom:12}}/>
+        {ingr&&<div style={{fontSize:12,color:MU,marginBottom:10}}>Знайдено: {fridgeRes.length} рецептів</div>}
+        {fridgeRes.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>)}
+        {!ingr&&<div style={{textAlign:"center",padding:"40px 20px",color:MU}}><div style={{fontSize:44,marginBottom:10}}>🥬</div>Введи інгредієнти — знайду що приготувати</div>}
+      </>}
+
+      {/* TIKTOK */}
       {sub==="tiktok"&&<>
-        <div style={{background:C,borderRadius:16,padding:16,marginBottom:14}}>
-          <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>📱 Рецепт з TikTok</div>
-          <textarea value={ttText} onChange={e=>setTtText(e.target.value)} placeholder="Скопіюй текст рецепту сюди..." rows={8} style={{...inp,resize:"none",marginBottom:10}}/>
-          <button onClick={importTT} disabled={ttLoad||!ttText.trim()} style={{width:"100%",padding:12,background:ttLoad||!ttText.trim()?"#444":A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,cursor:ttLoad||!ttText.trim()?"not-allowed":"pointer"}}>{ttLoad?"⏳...":"📥 Зберегти"}</button>
+        <div style={{background:C,borderRadius:16,padding:18,marginBottom:14}}>
+          <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>📱 Рецепт з TikTok або Cookpad</div>
+          <div style={{fontSize:13,color:MU,marginBottom:12,lineHeight:1.6}}>Скопіюй текст з опису відео або рецепту — AI збереже його автоматично.</div>
+          <textarea value={ttText} onChange={e=>setTtText(e.target.value)} placeholder={"Банан - 1 шт\nЯйця - 2 шт\nСир - 180г\n\nЗмішай інгредієнти...\n\n← Просто скопіюй текст звідси"} rows={8} style={{...inp,resize:"none",lineHeight:1.6,fontSize:13,marginBottom:12}}/>
+          <button onClick={importTT} disabled={ttLoad||!ttText.trim()} style={{width:"100%",padding:13,background:ttLoad||!ttText.trim()?"#444":A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:ttLoad||!ttText.trim()?"not-allowed":"pointer"}}>{ttLoad?"⏳ Зберігаю...":"📥 Зберегти рецепт"}</button>
+        </div>
+        <div style={{background:"rgba(232,83,10,.1)",border:`1px solid ${A}`,borderRadius:12,padding:14}}>
+          <div style={{fontWeight:700,fontSize:13,color:A,marginBottom:6}}>💡 З TikTok:</div>
+          <div style={{fontSize:13,color:SO,lineHeight:1.7}}>1. Відкрий відео → три крапки ···<br/>2. "Копіювати текст"<br/>3. Встав сюди — AI зробить рецепт</div>
+          <div style={{fontWeight:700,fontSize:13,color:A,marginBottom:6,marginTop:12}}>💡 З Cookpad:</div>
+          <div style={{fontSize:13,color:SO,lineHeight:1.7}}>1. Відкрий рецепт на cookpad.com/ua<br/>2. Скопіюй текст інгредієнтів і кроків<br/>3. Встав сюди</div>
         </div>
       </>}
 
+      {/* MINE */}
       {sub==="mine"&&<>
-        {!myRecs.length&&<div style={{textAlign:"center",padding:"40px 20px",color:MU}}>⭐ Тут будуть твої рецепти</div>}
-        {myRecs.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>)}
+        {!myRecs.length&&<div style={{textAlign:"center",padding:"40px 20px",color:MU}}><div style={{fontSize:44,marginBottom:10}}>⭐</div>Тут будуть рецепти з TikTok та Cookpad</div>}
+        {myRecs.map(r=>(
+          <div key={r.id}>
+            {r.source==="tiktok"&&<div style={{fontSize:10,color:A,marginBottom:4,marginLeft:4}}>📱 З TikTok/Cookpad</div>}
+            <RCard r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)}/>
+          </div>
+        ))}
       </>}
     </div>
   );
 };
 
 // ── PLAN PAGE ──
-const PlanPage=({plan,setPlan})=>{
+const PlanPage=({plan,setPlan,shop,setShop,srv,setSrv})=>{
   const weekDates=useMemo(()=>getWeekDates(),[]);
   const[selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
   const DB=window.RECIPES_DB||[];
 
-  const gen=()=>{
+  const gen=(days)=>{
     const np={...plan};
-    PLAN_MEALS.forEach(meal=>{
-      const pool=DB.filter(r=>r.cat===meal);
-      if(pool.length){
+    const daysArr=days===1?[selDay]:Array.from({length:7},(_,i)=>i);
+    daysArr.forEach(di=>{
+      PLAN_MEALS.forEach(meal=>{
+        const cats={Сніданок:"Сніданок",Суп:"Суп",Вечеря:"Вечеря"};
+        const pool=DB.filter(r=>r.cat===cats[meal]);
+        if(!pool.length)return;
         const r=pool[Math.floor(Math.random()*pool.length)];
-        np[`${selDay}-${meal}`]=[r];
-      }
+        np[`${di}-${meal}`]=[r];
+        (r.ing||[]).forEach(ing=>setShop(p=>[...p,{id:Date.now()+Math.random(),name:`${ing.a} ${ing.n}`.trim(),from:r.name,bought:false}]));
+      });
     });
     setPlan(np);
   };
+
+  const rem=(d,m)=>{setPlan(p=>({...p,[`${d}-${m}`]:[]}))} ;
+  const dayKcal=PLAN_MEALS.flatMap(m=>(plan[`${selDay}-${m}`]||[])).reduce((s,r)=>s+r.kcal,0);
 
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:800,fontSize:26}}>📅 Раціон</div>
-        <button onClick={gen} style={{padding:"7px 14px",background:A,border:"none",color:"#fff",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>✨ День</button>
+        <div style={{display:"flex",gap:6}}>
+          <button onClick={()=>gen(1)} style={{padding:"7px 12px",background:C2,border:"none",color:SO,borderRadius:10,fontSize:12,cursor:"pointer"}}>День ✨</button>
+          <button onClick={()=>gen(7)} style={{padding:"7px 14px",background:A,border:"none",color:"#fff",borderRadius:10,fontSize:12,fontWeight:700,cursor:"pointer"}}>Тиждень ✨</button>
+        </div>
+      </div>
+
+      <div style={{display:"flex",alignItems:"center",gap:10,background:C,borderRadius:12,padding:"10px 16px",marginBottom:14}}>
+        <span style={{fontSize:13,color:MU}}>Порцій:</span>
+        <button onClick={()=>setSrv(s=>Math.max(1,s-1))} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:28,height:28,fontSize:18,cursor:"pointer"}}>−</button>
+        <span style={{fontWeight:800,fontSize:18,minWidth:22,textAlign:"center"}}>{srv}</span>
+        <button onClick={()=>setSrv(s=>s+1)} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:28,height:28,fontSize:18,cursor:"pointer"}}>+</button>
+        {dayKcal>0&&<span style={{marginLeft:"auto",fontSize:13,color:A,fontWeight:700}}>~{dayKcal} ккал</span>}
       </div>
 
       <div style={{display:"flex",overflowX:"auto",marginBottom:14,gap:2}}>
         {weekDates.map((d,i)=>(
           <div key={i} onClick={()=>setSelDay(i)} style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:46,cursor:"pointer"}}>
             <div style={{fontSize:10,color:d.isToday?A:selDay===i?TX:MU,marginBottom:4,fontWeight:600}}>{DAYS_SHORT[i]}</div>
-            <div style={{width:36,height:36,borderRadius:"50%",background:selDay===i?A:d.isToday?"rgba(232,83,10,.2)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:selDay===i?"#fff":MU}}>{d.date}</div>
+            <div style={{width:36,height:36,borderRadius:"50%",background:selDay===i?A:d.isToday?"rgba(232,83,10,.2)":"transparent",border:d.isToday&&selDay!==i?`2px solid ${A}`:"none",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:selDay===i?"#fff":d.isToday?A:MU}}>{d.date}</div>
+            <div style={{width:6,height:6,borderRadius:"50%",background:PLAN_MEALS.some(m=>plan[`${i}-${m}`]?.length)?A:"transparent",marginTop:4}}/>
           </div>
         ))}
       </div>
@@ -353,14 +373,21 @@ const PlanPage=({plan,setPlan})=>{
         const items=plan[k]||[];
         return(
           <div key={meal} style={{background:C,borderRadius:16,padding:16,marginBottom:10}}>
-            <div style={{fontWeight:700,fontSize:16,marginBottom:8}}>{MEAL_ICONS[meal]} {meal}</div>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:items.length?12:0}}>
+              <div style={{fontWeight:700,fontSize:16}}>{MEAL_ICONS[meal]} {meal}</div>
+              {items.length>0&&<button onClick={()=>rem(selDay,meal)} style={{background:C2,border:"none",color:MU,borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>↻ замінити</button>}
+            </div>
             {items.map((r,i)=>(
-              <div key={i} style={{display:"flex",gap:10,padding:"9px 0",borderTop:`1px solid ${BR}`}}>
-                <div style={{fontSize:28,flexShrink:0}}>{r.e}</div>
-                <div style={{flex:1}}><div style={{fontWeight:600}}>{r.name}</div><div style={{fontSize:12,color:MU}}>⏱ {r.time} хв</div></div>
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:`1px solid ${BR}`}}>
+                <div style={{fontSize:28,flexShrink:0}}>{r.e||"🍽️"}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:14,fontWeight:600,lineHeight:1.3}}>{r.name}</div>
+                  <div style={{fontSize:12,color:MU}}>⏱ {r.time} хв · 🔥 {r.kcal} ккал</div>
+                </div>
+                <button onClick={()=>rem(selDay,meal)} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:22}}>×</button>
               </div>
             ))}
-            {!items.length&&<div style={{color:MU,fontSize:13,paddingTop:4}}>Порожньо</div>}
+            {!items.length&&<div style={{fontSize:13,color:MU,paddingTop:4,fontStyle:"italic"}}>Порожньо — в Рецептах натисни +</div>}
           </div>
         );
       })}
@@ -370,111 +397,203 @@ const PlanPage=({plan,setPlan})=>{
 
 // ── CALORIES PAGE ──
 const CaloriesPage=({apiKey})=>{
-  const[diary,setDiary]=useLS("khawk_diary5",[]);
-  const[goal,setGoal]=useLS("khawk_goal5",2000);
+  const[diary,setDiary]=useLS("khawk_diary4",[]);
+  const[goal,setGoal]=useLS("khawk_goal4",2000);
   const[aiQ,setAiQ]=useState("");
   const[aiLoad,setAiLoad]=useState(false);
   const[aiRes,setAiRes]=useState(null);
+  const[man,setMan]=useState({name:"",e:"🍽️",kcal:"",p:"",f:"",c:""});
 
-  const tot=diary.reduce((a,x)=>({kcal:a.kcal+(+x.kcal||0),p:a.p+(+x.p||0)}),{kcal:0,p:0});
+  const tot=diary.reduce((a,x)=>({kcal:a.kcal+(+x.kcal||0),p:a.p+(+x.p||0),f:a.f+(+x.f||0),c:a.c+(+x.c||0)}),{kcal:0,p:0,f:0,c:0});
   const pct=Math.min(tot.kcal/goal,1);
+  const circ=2*Math.PI*54;
 
   const askAI=async()=>{
-    if(!aiQ.trim()||!apiKey)return;
-    setAiLoad(true);
+    if(!aiQ.trim())return;
+    if(!apiKey){alert("Потрібен API ключ → ⚙️");return;}
+    setAiLoad(true);setAiRes(null);
     try{
-      const raw=await claude(apiKey,[{role:"user",content:`Калорії: "${aiQ}". JSON: {"name":"","e":"🍽️","kcal":250}`}],"Короткий ответ",300);
+      const raw=await claude(apiKey,[{role:"user",content:`Порахуй калорії: "${aiQ}". ТІЛЬКИ JSON: {"name":"назва","e":"emoji","kcal":число,"p":число,"f":число,"c":число,"note":"порада"}`}],"Нутриціолог. Тільки JSON.",400);
       setAiRes(JSON.parse(raw.replace(/```json|```/g,"").trim()));
-    }catch(e){setAiRes({name:aiQ,kcal:200,e:"🍽️"});}
+    }catch(ex){alert("Помилка: "+ex.message);}
     setAiLoad(false);
   };
+
+  const addE=e=>setDiary(p=>[...p,{...e,id:Date.now(),time:new Date().toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit"})}]);
+  const di={background:C2,border:`1px solid ${BR}`,borderRadius:8,padding:"9px 10px",fontSize:13,color:TX,outline:"none"};
 
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{fontWeight:800,fontSize:26,marginBottom:14}}>📊 Калорії</div>
-      <div style={{textAlign:"center",marginBottom:14}}>
-        <div style={{fontSize:48,marginBottom:8}}>{tot.kcal}</div>
-        <div style={{fontSize:13,color:MU}}>/ {goal} ккал ({Math.round(pct*100)}%)</div>
+
+      <div style={{display:"flex",justifyContent:"center",marginBottom:14}}>
+        <div style={{position:"relative",width:130,height:130}}>
+          <svg width="130" height="130" viewBox="0 0 130 130" style={{transform:"rotate(-90deg)"}}>
+            <circle cx="65" cy="65" r="54" fill="none" stroke={BR} strokeWidth={9}/>
+            <circle cx="65" cy="65" r="54" fill="none" stroke={pct>0.95?A:G} strokeWidth={9} strokeDasharray={circ} strokeDashoffset={circ-pct*circ} strokeLinecap="round" style={{transition:"all .8s"}}/>
+          </svg>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+            <div style={{fontWeight:900,fontSize:24,lineHeight:1}}>{tot.kcal}</div>
+            <div style={{fontSize:10,color:MU}}>/ {goal} ккал</div>
+          </div>
+        </div>
       </div>
 
-      <div style={{display:"flex",gap:8}}>
-        <input value={aiQ} onChange={e=>setAiQ(e.target.value)} placeholder="Що з'їв?" style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px 14px",fontSize:14,color:TX,outline:"none"}}/>
-        <button onClick={askAI} disabled={aiLoad} style={{padding:"10px 16px",background:aiLoad?"#444":A,border:"none",color:"#fff",borderRadius:10,cursor:"pointer",fontWeight:700}}>→</button>
+      <div style={{display:"flex",alignItems:"center",gap:10,background:C,borderRadius:12,padding:"10px 14px",marginBottom:12}}>
+        <span style={{fontSize:13,color:MU}}>Ціль:</span>
+        <input type="number" value={goal} onChange={e=>setGoal(+e.target.value)} style={{...di,width:80,textAlign:"center"}}/>
+        <span style={{fontSize:13,color:MU}}>ккал</span>
       </div>
 
-      {aiRes&&<div style={{marginTop:10,background:C,padding:12,borderRadius:10}}>
-        <div style={{fontSize:14,fontWeight:600}}>{aiRes.e} {aiRes.name}</div>
-        <div style={{fontSize:13,color:A,fontWeight:700,marginTop:4}}>{aiRes.kcal} ккал</div>
-        <button onClick={()=>{setDiary(p=>[...p,{...aiRes,id:Date.now()}]);setAiRes(null);setAiQ("");}} style={{marginTop:8,width:"100%",background:A,color:"#fff",border:"none",padding:8,borderRadius:8,cursor:"pointer"}}>+ Додати</button>
-      </div>}
-
-      <div style={{marginTop:14}}>
-        {diary.map(e=>(
-          <div key={e.id} style={{background:C,padding:10,marginBottom:6,borderRadius:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-            <div><span>{e.e} {e.name}</span></div>
-            <button onClick={()=>setDiary(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:MU,cursor:"pointer"}}>✕</button>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:16}}>
+        {[{l:"Білки",v:Math.round(tot.p)+"г",c:G},{l:"Жири",v:Math.round(tot.f)+"г"},{l:"Вугл.",v:Math.round(tot.c)+"г"}].map((m,i)=>(
+          <div key={i} style={{background:C,borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
+            <div style={{fontWeight:800,fontSize:18,color:m.c||TX}}>{m.v}</div>
+            <div style={{fontSize:11,color:MU}}>{m.l}</div>
           </div>
         ))}
       </div>
+
+      <div style={{background:C,borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>🤖 AI рахує калорії</div>
+        <div style={{fontSize:12,color:MU,marginBottom:10}}>Напиши що з'їв — AI порахує</div>
+        <div style={{display:"flex",gap:8,marginBottom:10}}>
+          <input value={aiQ} onChange={e=>setAiQ(e.target.value)} onKeyDown={e=>e.key==="Enter"&&askAI()} placeholder="склянка соку, тарілка борщу..." style={{...di,flex:1}}/>
+          <button onClick={askAI} disabled={aiLoad} style={{padding:"9px 16px",background:aiLoad?"#444":A,border:"none",color:"#fff",borderRadius:10,cursor:aiLoad?"not-allowed":"pointer",fontWeight:700,fontSize:15}}>{aiLoad?"⏳":"→"}</button>
+        </div>
+        {aiRes&&<div className="fade" style={{background:C2,borderRadius:12,padding:14}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+            <span style={{fontSize:32}}>{aiRes.e}</span>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:700,fontSize:15}}>{aiRes.name}</div>
+              {aiRes.note&&<div style={{fontSize:12,color:MU,marginTop:2}}>{aiRes.note}</div>}
+            </div>
+            <div style={{fontWeight:900,fontSize:26,color:A}}>{aiRes.kcal}</div>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6,marginBottom:12}}>
+            {[["Б",aiRes.p+"г",G],["Ж",aiRes.f+"г",null],["В",aiRes.c+"г",null]].map(([l,v,c],i)=>(
+              <div key={i} style={{background:BG,borderRadius:8,padding:"8px",textAlign:"center"}}>
+                <div style={{fontWeight:700,color:c||TX}}>{v}</div>
+                <div style={{fontSize:10,color:MU}}>{l}</div>
+              </div>
+            ))}
+          </div>
+          <button onClick={()=>{addE({name:aiRes.name,e:aiRes.e,kcal:+aiRes.kcal,p:+aiRes.p,f:+aiRes.f,c:+aiRes.c});setAiRes(null);setAiQ("");}} style={{width:"100%",padding:11,background:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Додати в щоденник</button>
+        </div>}
+      </div>
+
+      <div style={{background:C,borderRadius:14,padding:16,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>✍️ Вручну</div>
+        <div style={{display:"grid",gridTemplateColumns:"44px 1fr",gap:8,marginBottom:8}}>
+          <input value={man.e} onChange={e=>setMan(p=>({...p,e:e.target.value}))} style={{...di,fontSize:22,textAlign:"center",padding:"6px 2px"}} maxLength={2}/>
+          <input value={man.name} onChange={e=>setMan(p=>({...p,name:e.target.value}))} placeholder="Назва страви" style={{...di,width:"100%"}}/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:6,marginBottom:10}}>
+          {[["kcal","Ккал"],["p","Білки"],["f","Жири"],["c","Вугл."]].map(([k,l])=>(
+            <input key={k} value={man[k]} onChange={e=>setMan(p=>({...p,[k]:e.target.value}))} placeholder={l} type="number" style={{...di,textAlign:"center"}}/>
+          ))}
+        </div>
+        <button onClick={()=>{if(!man.name.trim())return;addE({name:man.name,e:man.e,kcal:+man.kcal||0,p:+man.p||0,f:+man.f||0,c:+man.c||0});setMan({name:"",e:"🍽️",kcal:"",p:"",f:"",c:""}); }} style={{width:"100%",padding:11,background:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>+ Додати</button>
+      </div>
+
+      {!diary.length&&<div style={{textAlign:"center",padding:"20px",color:MU}}>Щоденник порожній</div>}
+      {diary.map(e=>(
+        <div key={e.id} style={{background:C,borderRadius:12,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:24}}>{e.e}</div>
+          <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600}}>{e.name}</div><div style={{fontSize:12,color:MU}}>Б:{e.p}г · Ж:{e.f}г · В:{e.c}г · {e.time}</div></div>
+          <div style={{fontWeight:800,fontSize:18,color:A}}>{e.kcal}</div>
+          <button onClick={()=>setDiary(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:20}}>×</button>
+        </div>
+      ))}
+      {diary.length>0&&<button onClick={()=>setDiary([])} style={{width:"100%",padding:11,background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:12,fontSize:13,cursor:"pointer",marginTop:4,marginBottom:16}}>🗑 Очистити</button>}
     </div>
   );
 };
 
-// ── CHAT PAGE (ВИПРАВЛЕНО) ──
+// ── CHAT PAGE ──
 const ChatPage=({apiKey})=>{
-  const[msgs,setMsgs]=useState([{r:"ai",t:"Привіт! 👨‍🍳 Я кухонний асистент. Питай про рецепти, калорії, інгредієнти!"}]);
+  const[msgs,setMsgs]=useState([{r:"ai",t:"Привіт! 👋 Я кухонний AI асистент.\n\n• Рецепти і поради\n• Калорії будь-якої страви\n• Заміна інгредієнтів\n• Що приготувати з того що є\n\nПитай!"}]);
   const[inp,setInp]=useState("");
   const[load,setLoad]=useState(false);
   const[hist,setHist]=useState([]);
-  const{speak}=useVoice();
   const bot=useRef();
+  useEffect(()=>{bot.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
 
-  useEffect(()=>bot.current?.scrollIntoView(),[msgs]);
-
-  const send=async(t="")=>{
-    const text=t||inp;
-    if(!text.trim()||load||!apiKey)return;
-    
+  const send=async t=>{
+    if(!t.trim()||load)return;
+    if(!apiKey){alert("Потрібен API ключ → ⚙️");return;}
     setInp("");
-    setMsgs(p=>[...p,{r:"u",t:text}]);
+    const nh=[...hist,{role:"user",content:t}];
+    setMsgs(p=>[...p,{r:"u",t},{r:"ai",t:"...",loading:true}]);
     setLoad(true);
-
     try{
-      const DB=window.RECIPES_DB||[];
-      const recipeInfo=DB.slice(0,3).map(r=>`${r.name} (${r.cat}, ${r.time}хв)`).join("; ");
-      
-      const nh=[...hist,{role:"user",content:text}];
-      const reply=await claude(apiKey,nh,`Кухонний AI. Українська. В базі: ${recipeInfo}. Коротко!`,400);
-      
+      const reply=await claude(apiKey,nh,"Кухонний AI асистент. Відповідай УКРАЇНСЬКОЮ. Коротко і корисно. Рецепти, харчування, калорії. До 150 слів.");
       setHist([...nh,{role:"assistant",content:reply}]);
-      setMsgs(p=>[...p,{r:"ai",t:reply}]);
-      speak(reply.substring(0,100));
-    }catch(e){
-      setMsgs(p=>[...p,{r:"ai",t:"❌ "+e.message}]);
-    }
+      setMsgs(p=>[...p.slice(0,-1),{r:"ai",t:reply}]);
+    }catch(e){setMsgs(p=>[...p.slice(0,-1),{r:"ai",t:"Помилка: "+e.message}]);}
     setLoad(false);
   };
+
+  const qs=["🔥 Скільки калорій у борщі?","🍗 Курка за 20 хвилин","🥗 Здорова вечеря","🔄 Чим замінити вершки?","📅 Тижневе меню"];
 
   return(
     <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 62px)"}}>
       <div style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
         <div style={{fontWeight:800,fontSize:26,marginBottom:16}}>💬 AI Асистент</div>
         {msgs.map((m,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:m.r==="u"?"flex-end":"flex-start",gap:8,marginBottom:12}}>
-            {m.r==="ai"&&<div style={{fontSize:24}}>👨‍🍳</div>}
-            <div style={{maxWidth:"80%",background:m.r==="u"?A:C,padding:12,borderRadius:12,color:"#fff",lineHeight:1.5}}>
-              {m.t}
-            </div>
+          <div key={i} style={{display:"flex",justifyContent:m.r==="u"?"flex-end":"flex-start",gap:8,marginBottom:14,alignItems:"flex-end"}}>
+            {m.r==="ai"&&<div style={{width:32,height:32,borderRadius:"50%",background:"#1a3a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>🤖</div>}
+            <div style={{maxWidth:"80%",padding:"11px 15px",borderRadius:m.r==="u"?"18px 18px 4px 18px":"18px 18px 18px 4px",background:m.r==="u"?A:C,fontSize:14,lineHeight:1.7,whiteSpace:"pre-wrap",color:m.loading?MU:TX}}>{m.t}</div>
+            {m.r==="u"&&<div style={{width:32,height:32,borderRadius:"50%",background:C2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0}}>👤</div>}
           </div>
         ))}
-        {load&&<div style={{textAlign:"center",color:MU,fontSize:12}}>⏳ Думаю...</div>}
+        {msgs.length<=1&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:8}}>{qs.map((q,i)=><button key={i} onClick={()=>send(q)} style={{background:C,border:`1px solid ${BR}`,color:SO,borderRadius:20,padding:"8px 14px",fontSize:12,cursor:"pointer"}}>{q}</button>)}</div>}
         <div ref={bot}/>
       </div>
-
-      <div style={{padding:"10px 16px",background:"#111",borderTop:`1px solid ${BR}`,display:"flex",gap:8}}>
-        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Питай..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:24,padding:"11px 16px",fontSize:14,color:TX,outline:"none"}}/>
-        <button onClick={()=>send()} disabled={load||!apiKey} style={{padding:"11px 18px",background:load||!apiKey?"#444":A,color:"#fff",border:"none",borderRadius:24,fontWeight:700,cursor:"pointer"}}>➤</button>
+      <div style={{padding:"10px 16px",background:BG,borderTop:`1px solid ${BR}`,display:"flex",gap:8}}>
+        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send(inp)} placeholder="Запитай..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:24,padding:"11px 16px",fontSize:14,color:TX,outline:"none"}}/>
+        <button onClick={()=>send(inp)} disabled={load||!inp.trim()} style={{padding:"11px 20px",background:load||!inp.trim()?"#444":A,color:"#fff",border:"none",borderRadius:24,fontSize:16,fontWeight:700,cursor:load||!inp.trim()?"not-allowed":"pointer"}}>➤</button>
       </div>
+    </div>
+  );
+};
+
+// ── SHOP PAGE ──
+const ShopPage=({shop,setShop})=>{
+  const[inp,setInp]=useState("");
+  const add=()=>{if(!inp.trim())return;setShop(p=>[...p,{id:Date.now(),name:inp.trim(),from:"вручну",bought:false}]);setInp("");};
+  const grps=shop.reduce((a,i)=>{(a[i.from]=a[i.from]||[]).push(i);return a},{});
+
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <div style={{fontWeight:800,fontSize:26}}>🛒 Покупки</div>
+        <span style={{fontSize:13,color:MU}}>{shop.filter(i=>!i.bought).length} залишилось</span>
+      </div>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <input value={inp} onChange={e=>setInp(e.target.value)} onKeyDown={e=>e.key==="Enter"&&add()} placeholder="Додати вручну..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px 14px",fontSize:14,color:TX,outline:"none"}}/>
+        <button onClick={add} style={{background:A,border:"none",color:"#fff",borderRadius:10,padding:"0 18px",fontSize:22,cursor:"pointer",fontWeight:700}}>+</button>
+      </div>
+      {!shop.length&&<div style={{textAlign:"center",padding:"50px 20px",color:MU}}><div style={{fontSize:50,marginBottom:12}}>🛒</div><div style={{fontWeight:700,fontSize:18,marginBottom:6}}>Список порожній</div><div style={{fontSize:14}}>Згенеруй раціон — список сформується автоматично</div></div>}
+      {Object.entries(grps).map(([from,items])=>(
+        <div key={from} style={{background:C,borderRadius:14,overflow:"hidden",marginBottom:12}}>
+          <div style={{padding:"10px 16px",fontWeight:700,fontSize:12,color:MU,borderBottom:`1px solid ${BR}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span>{from}</span>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span>{items.filter(i=>i.bought).length}/{items.length}</span>
+              <button onClick={()=>setShop(p=>p.filter(i=>i.from!==from))} style={{background:"none",border:"none",color:"#555",cursor:"pointer",fontSize:16}}>🗑</button>
+            </div>
+          </div>
+          {items.map(item=>(
+            <div key={item.id} onClick={()=>setShop(p=>p.map(i=>i.id===item.id?{...i,bought:!i.bought}:i))} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:`1px solid ${BR}`,cursor:"pointer",opacity:item.bought?.4:1}}>
+              <div style={{width:22,height:22,borderRadius:6,border:item.bought?"none":`2px solid ${BR}`,background:item.bought?G:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#fff",fontSize:13}}>{item.bought?"✓":""}</div>
+              <div style={{flex:1,fontSize:14,textDecoration:item.bought?"line-through":"none"}}>{item.name}</div>
+              <button onClick={e=>{e.stopPropagation();setShop(p=>p.filter(i=>i.id!==item.id));}} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:18}}>×</button>
+            </div>
+          ))}
+        </div>
+      ))}
+      {shop.some(i=>i.bought)&&<button onClick={()=>setShop(p=>p.filter(i=>!i.bought))} style={{width:"100%",padding:12,background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:12,fontSize:13,cursor:"pointer",marginTop:4,marginBottom:16}}>🗑 Видалити куплені</button>}
     </div>
   );
 };
@@ -483,18 +602,23 @@ const ChatPage=({apiKey})=>{
 const SettingsPage=({apiKey,setApiKey})=>{
   const[k,setK]=useState(apiKey);
   const[ok,setOk]=useState(false);
-
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{fontWeight:800,fontSize:26,marginBottom:20}}>⚙️ Налаштування</div>
-      <div style={{background:C,borderRadius:16,padding:16}}>
-        <div style={{fontWeight:700,marginBottom:6}}>🔑 Claude API ключ</div>
-        <div style={{fontSize:12,color:MU,marginBottom:10}}>Скопіюй з https://console.anthropic.com/</div>
-        <input type="password" value={k} onChange={e=>setK(e.target.value)} placeholder="sk-ant-..." style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",color:TX,outline:"none",width:"100%",marginBottom:10,fontFamily:"monospace",fontSize:12}}/>
-        <button onClick={()=>{setApiKey(k);localStorage.setItem("khawk_key5",JSON.stringify(k));setOk(true);setTimeout(()=>setOk(false),2000);}} style={{width:"100%",padding:12,background:ok?G:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,cursor:"pointer",fontSize:14}}>
-          {ok?"✓ OK":"Зберегти"}
-        </button>
-        {apiKey&&<div style={{fontSize:11,color:G,marginTop:8,textAlign:"center"}}>✓ Активний: {apiKey.substring(0,10)}...***</div>}
+      <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>🔑 Claude API ключ</div>
+        <div style={{fontSize:13,color:MU,marginBottom:12,lineHeight:1.6}}>Для AI чату, підрахунку калорій і збереження рецептів з TikTok. Зберігається тільки на пристрої.</div>
+        <input type="password" value={k} onChange={e=>setK(e.target.value)} placeholder="sk-ant-api03-..." style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",fontSize:13,color:TX,outline:"none",width:"100%",fontFamily:"monospace",marginBottom:12}}/>
+        <button onClick={()=>{setApiKey(k);setOk(true);setTimeout(()=>setOk(false),2000);}} style={{width:"100%",padding:12,background:ok?G:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>{ok?"✓ Збережено!":"Зберегти ключ"}</button>
+        {apiKey&&<div style={{fontSize:12,color:G,marginTop:8,textAlign:"center"}}>✓ Ключ активний</div>}
+      </div>
+      <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>📱 Додати на iPhone</div>
+        <div style={{fontSize:13,color:MU,lineHeight:1.8}}>1. Відкрий в <strong style={{color:TX}}>Safari</strong><br/>2. Кнопка ↑ внизу<br/>3. "<strong style={{color:TX}}>Додати на екран Дому</strong>"<br/>4. 🎉 Буде як справжній додаток!</div>
+      </div>
+      <div style={{background:"rgba(232,83,10,.1)",border:`1px solid ${A}`,borderRadius:14,padding:16}}>
+        <div style={{fontWeight:700,fontSize:13,color:A,marginBottom:6}}>📚 База рецептів</div>
+        <div style={{fontSize:13,color:SO,lineHeight:1.6}}>{(window.RECIPES_DB||[]).length}+ рецептів українською з посиланнями на Cookpad для перегляду фото і відео.</div>
       </div>
     </div>
   );
@@ -502,32 +626,59 @@ const SettingsPage=({apiKey,setApiKey})=>{
 
 // ── APP ──
 const App=()=>{
-  const[tab,setTab]=useState("chat");
+  const[tab,setTab]=useState("recipes");
   const[apiKey,setApiKey]=useLS("khawk_key5","");
   const[faves,setFaves]=useLS("khawk_faves5",[]);
   const[plan,setPlan]=useLS("khawk_plan5",{});
+  const[shop,setShop]=useLS("khawk_shop5",[]);
+  const[srv,setSrv]=useLS("khawk_srv5",4);
   const[myRecs,setMyRecs]=useLS("khawk_mine5",[]);
   const[detail,setDetail]=useState(null);
-  const[srv,setSrv]=useState(4);
+  const[addTo,setAddTo]=useState(null);
 
   const toggleFav=id=>setFaves(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);
 
+  const confirmPlan=(r,meal)=>{
+    const k=`0-${meal}`;
+    setPlan(p=>({...p,[k]:[...(p[k]||[]),r]}));
+    (r.ing||[]).forEach(i=>setShop(p=>[...p,{id:Date.now()+Math.random(),name:`${i.a} ${i.n}`.trim(),from:r.name,bought:false}]));
+    setAddTo(null);
+  };
+
+  const TABS=[{id:"recipes",icon:"📖",label:"Рецепти"},{id:"plan",icon:"📅",label:"Раціон"},{id:"calories",icon:"📊",label:"Калорії"},{id:"chat",icon:"💬",label:"AI Чат"},{id:"shop",icon:"🛒",label:"Покупки"},{id:"settings",icon:"⚙️",label:"Налашт."}];
+
   return(
     <div style={{background:BG,minHeight:"100dvh",color:TX,display:"flex",flexDirection:"column"}}>
-      {detail&&<RDetail r={detail} srv={srv} setSrv={setSrv} onBack={()=>setDetail(null)} onPlan={r=>{setPlan(p=>({...p,[`0-${r.cat}`]:[...(p[`0-${r.cat}`]||[]),r]}));setDetail(null);}}/>}
+      {detail&&<RDetail r={detail} srv={srv} setSrv={setSrv} onBack={()=>setDetail(null)} onPlan={r=>{setAddTo(r);setDetail(null);}}/>}
+
+      {addTo&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:90,display:"flex",alignItems:"flex-end",maxWidth:430,margin:"0 auto"}}>
+          <div style={{background:C,borderRadius:"24px 24px 0 0",padding:"24px 20px 36px",width:"100%"}}>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:4,lineHeight:1.3}}>{addTo.name}</div>
+            <div style={{color:MU,fontSize:13,marginBottom:18}}>Вибери прийом їжі:</div>
+            {PLAN_MEALS.map(m=>(
+              <button key={m} onClick={()=>confirmPlan(addTo,m)} style={{display:"flex",alignItems:"center",gap:14,width:"100%",background:C2,border:"none",color:TX,borderRadius:14,padding:"14px 18px",fontSize:15,cursor:"pointer",marginBottom:8,fontWeight:500}}>
+                <span style={{fontSize:24}}>{MEAL_ICONS[m]}</span>{m}
+              </button>
+            ))}
+            <button onClick={()=>setAddTo(null)} style={{width:"100%",background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:14,padding:13,fontSize:14,cursor:"pointer",marginTop:4}}>Скасувати</button>
+          </div>
+        </div>
+      )}
 
       <div style={{flex:1,overflowY:tab==="chat"?"hidden":"auto",paddingBottom:tab==="chat"?0:80}}>
-        {tab==="recipes"&&<RecipesPage faves={faves} onFav={toggleFav} onAdd={()=>{}} onOpen={r=>setDetail(r)} myRecs={myRecs} setMyRecs={setMyRecs} apiKey={apiKey}/>}
-        {tab==="plan"&&<PlanPage plan={plan} setPlan={setPlan}/>}
+        {tab==="recipes"&&<RecipesPage faves={faves} onFav={toggleFav} onAdd={r=>setAddTo(r)} onOpen={r=>setDetail(r)} myRecs={myRecs} setMyRecs={setMyRecs} apiKey={apiKey}/>}
+        {tab==="plan"&&<PlanPage plan={plan} setPlan={setPlan} shop={shop} setShop={setShop} srv={srv} setSrv={setSrv}/>}
         {tab==="calories"&&<CaloriesPage apiKey={apiKey}/>}
         {tab==="chat"&&<ChatPage apiKey={apiKey}/>}
+        {tab==="shop"&&<ShopPage shop={shop} setShop={setShop}/>}
         {tab==="settings"&&<SettingsPage apiKey={apiKey} setApiKey={setApiKey}/>}
       </div>
 
       <div style={{background:"#111",display:"flex",position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,borderTop:`1px solid ${BR}`,zIndex:50}}>
-        {[{id:"chat",icon:"💬",l:"Чат"},{id:"recipes",icon:"📖",l:"Рецепти"},{id:"plan",icon:"📅",l:"Меню"},{id:"calories",icon:"📊",l:"Калорії"},{id:"settings",icon:"⚙️",l:"Налашт."}].map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"8px 0",border:"none",background:"none",color:tab===t.id?A:MU,cursor:"pointer",fontSize:9,fontWeight:tab===t.id?700:400}}>
-            <span style={{fontSize:18}}>{t.icon}</span>{t.l}
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"10px 2px 8px",border:"none",background:"transparent",color:tab===t.id?A:MU,cursor:"pointer",fontSize:9,fontWeight:tab===t.id?700:400,borderTop:tab===t.id?`2px solid ${A}`:"2px solid transparent"}}>
+            <span style={{fontSize:19}}>{t.icon}</span>{t.label}
           </button>
         ))}
       </div>
