@@ -2,7 +2,7 @@
 <html lang="uk">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="KitchenHawk">
@@ -10,17 +10,20 @@
 <title>🍽️ KitchenHawk AI</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#f0f0f0;overscroll-behavior:none}
-#root{max-width:430px;margin:0 auto;min-height:100dvh}
+html,body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#f0f0f0;overscroll-behavior:none;width:100%;height:100%;-webkit-user-select:none;-webkit-touch-callout:none}
+body{padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+#root{width:100%;max-width:100vw;min-height:100vh;margin:0;padding:0}
 ::-webkit-scrollbar{width:0;height:0}
-input,select,textarea,button{font-family:inherit}
-input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input,select,textarea,button{font-family:inherit;font-size:16px;-webkit-appearance:none;border-radius:8px}
+input,textarea{padding:12px;background:#242424;border:1px solid #333;color:#f0f0f0}
+input:focus,textarea:focus{outline:none;border-color:#e8530a}
+button{cursor:pointer;padding:12px 16px;border:none}
+textarea{resize:none}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .fade{animation:fadeUp .25s ease}
-.pulse{animation:pulse 1.5s infinite}
 .spin{animation:spin 1s linear infinite}
+.container{width:100%;padding:0;margin:0;display:flex;flex-direction:column}
 </style>
 </head>
 <body>
@@ -31,10 +34,6 @@ input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-<!-- VISION API для сканування фото -->
-<script async src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-<script async src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
 
 <script type="text/babel">
 const {useState,useEffect,useRef,useMemo,useCallback}=React;
@@ -49,11 +48,20 @@ const useLS=(key,def)=>{
 };
 
 // ── CLAUDE API ──
-const claude=async(key,msgs,sys="",max=1500)=>{
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max,system:sys,messages:msgs})});
-  const d=await r.json();
-  if(d.error)throw new Error(d.error.message);
-  return d.content.map(b=>b.text||"").join("");
+const claude=async(key,msgs,sys="",max=1000)=>{
+  try{
+    const r=await fetch("https://api.anthropic.com/v1/messages",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:max,system:sys,messages:msgs})
+    });
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    return d.content.map(b=>b.text||"").join("");
+  }catch(e){
+    console.error("Claude error:",e);
+    throw e;
+  }
 };
 
 // ── VOICE SYNTHESIS ──
@@ -61,9 +69,11 @@ const useVoice=()=>{
   const syn=window.speechSynthesis;
   return {
     speak:(text,lang="uk-UA")=>{
+      if(!text)return;
       const u=new SpeechSynthesisUtterance(text);
       u.lang=lang;
       u.rate=0.9;
+      u.pitch=1;
       syn.cancel();
       syn.speak(u);
     },
@@ -76,7 +86,6 @@ const useVoice=()=>{
 const useSpeechRecognition=()=>{
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
   const[listening,setListening]=useState(false);
-  const[text,setText]=useState("");
   const recRef=useRef(null);
   
   const start=useCallback((onResult)=>{
@@ -89,59 +98,44 @@ const useSpeechRecognition=()=>{
     rec.onstart=()=>setListening(true);
     rec.onresult=e=>{
       const t=[...e.results].map(r=>r[0].transcript).join("");
-      setText(t);
       onResult?.(t);
     };
     rec.onend=()=>setListening(false);
-    rec.onerror=e=>console.error(e);
+    rec.onerror=e=>console.error("Speech error:",e);
     
     recRef.current=rec;
     rec.start();
   },[]);
 
-  return{listening,text,setText,start,stop:()=>recRef.current?.abort(),isSupported:!!SpeechRecognition};
-};
-
-// ── IMAGE TO BASE64 ──
-const imageToBase64=async(file)=>{
-  return new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(reader.result.split(',')[1]);
-    reader.onerror=reject;
-    reader.readAsDataURL(file);
-  });
+  return{listening,start,stop:()=>recRef.current?.abort(),isSupported:!!SpeechRecognition};
 };
 
 // ── GET WEEK DATES ──
 const getWeekDates=()=>{
   const today=new Date();
-  const dow=today.getDay();
-  const mondayOffset=dow===0?-6:1-dow;
+  const dow=today.getDay()||7;
   const monday=new Date(today);
-  monday.setDate(today.getDate()+mondayOffset);
+  monday.setDate(today.getDate()-(dow-1));
   return Array.from({length:7},(_,i)=>{
     const d=new Date(monday);
     d.setDate(monday.getDate()+i);
-    return{date:d.getDate(),isToday:d.toDateString()===today.toDateString(),fullDate:d,day:DAYS_SHORT[i]};
+    return{date:d.getDate(),month:d.getMonth()+1,isToday:d.toDateString()===today.toDateString(),day:["Пн","Вт","Ср","Чт","Пт","Сб","Нд"][i]};
   });
 };
 
 const CATS=["Сніданок","Суп","Обід","Вечеря","Десерт","Перекус"];
-const DAYS_SHORT=["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
 const PLAN_MEALS=["Сніданок","Вечеря"];
-const MEAL_ICONS={Сніданок:"☀️",Суп:"🍲",Вечеря:"🌙",Обід:"🍽️",Десерт:"🍰",Перекус:"🍪"};
+const MEAL_ICONS={Сніданок:"☀️",Суп:"🍲",Вечеря:"🌙",Обід:"🍽️"};
 
 // ── RECIPE CARD ──
 const RCard=({r,onOpen})=>(
-  <div className="fade" style={{background:C,borderRadius:16,overflow:"hidden",marginBottom:12,cursor:"pointer"}} onClick={onOpen}>
-    <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"14px 14px 10px",display:"flex",gap:12}}>
-      <div style={{fontSize:42,flexShrink:0,lineHeight:1}}>{r.e||"🍽️"}</div>
-      <div style={{flex:1,minWidth:0}}>
-        <div style={{fontWeight:700,fontSize:15,lineHeight:1.3,marginBottom:6}}>{r.name}</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>⏱ {r.time} хв</span>
-          <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>🔥 {r.kcal} ккал</span>
-        </div>
+  <div className="fade" onClick={onOpen} style={{background:C,borderRadius:12,overflow:"hidden",marginBottom:10,cursor:"pointer",padding:12,display:"flex",gap:12}}>
+    <div style={{fontSize:36,flexShrink:0}}>{r.e||"🍽️"}</div>
+    <div style={{flex:1,minWidth:0}}>
+      <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>{r.name}</div>
+      <div style={{display:"flex",gap:8,fontSize:12,color:MU}}>
+        <span>⏱ {r.time}m</span>
+        <span>🔥 {r.kcal}</span>
       </div>
     </div>
   </div>
@@ -149,315 +143,167 @@ const RCard=({r,onOpen})=>(
 
 // ── RECIPE DETAIL ──
 const RDetail=({r,onBack})=>{
-  const[astep,setAstep]=useState(-1);
-  const[tsec,setTsec]=useState(0);
-  const[ton,setTon]=useState(false);
+  const[step,setStep]=useState(0);
   const{speak}=useVoice();
-  const ref=useRef();
-
-  useEffect(()=>{
-    if(ton&&tsec>0)ref.current=setTimeout(()=>setTsec(s=>s-1),1000);
-    else if(tsec===0&&ton){setTon(false);speak("Таймер закінчився");}
-    return()=>clearTimeout(ref.current);
-  },[ton,tsec,speak]);
-
-  const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
-
+  
   return(
-    <div style={{position:"fixed",inset:0,background:BG,zIndex:100,maxWidth:430,margin:"0 auto",overflowY:"auto"}}>
-      {ton&&tsec>0&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",maxWidth:430,width:"100%",zIndex:200,background:A,padding:"11px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <span style={{fontWeight:800,fontSize:20}}>⏱ {fmt(tsec)}</span>
-        <button onClick={()=>setTon(false)} style={{background:"rgba(0,0,0,.3)",border:"none",color:"#fff",borderRadius:20,padding:"5px 16px",cursor:"pointer"}}>стоп</button>
-      </div>}
-
-      <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"60px 20px 24px",position:"relative"}}>
-        <button onClick={onBack} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,.5)",border:"none",color:"#fff",borderRadius:"50%",width:42,height:42,fontSize:20,cursor:"pointer"}}>←</button>
-        <div style={{fontSize:64,marginBottom:10}}>{r.e||"🍽️"}</div>
-        <div style={{fontWeight:800,fontSize:24,lineHeight:1.2,marginBottom:8}}>{r.name}</div>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          <span style={{background:"rgba(255,255,255,.15)",borderRadius:20,padding:"4px 12px",fontSize:12}}>⏱ {r.time} хв</span>
-          <span style={{background:"rgba(255,255,255,.15)",borderRadius:20,padding:"4px 12px",fontSize:12}}>🔥 {r.kcal} ккал</span>
-        </div>
+    <div style={{position:"fixed",inset:0,background:BG,zIndex:100,overflowY:"auto",paddingTop:40,paddingBottom:20}}>
+      <button onClick={onBack} style={{position:"fixed",top:10,left:10,zIndex:101,background:A,color:"#fff",border:"none",borderRadius:"50%",width:36,height:36,fontSize:18,cursor:"pointer"}}>←</button>
+      
+      <div style={{padding:"20px",textAlign:"center"}}>
+        <div style={{fontSize:56,marginBottom:10}}>{r.e}</div>
+        <div style={{fontWeight:800,fontSize:18,marginBottom:8}}>{r.name}</div>
+        <div style={{fontSize:13,color:MU}}>⏱ {r.time} хв • 🔥 {r.kcal} ккал</div>
       </div>
 
-      <div style={{padding:"20px 20px 100px"}}>
-        <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Інгредієнти</div>
-        <div style={{background:C,borderRadius:14,overflow:"hidden",marginBottom:20}}>
-          {(r.ing||[]).map((ing,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",borderBottom:i<(r.ing||[]).length-1?`1px solid ${BR}`:"none"}}>
-              <div style={{width:8,height:8,borderRadius:"50%",background:A,flexShrink:0}}/>
-              <div style={{flex:1,fontSize:14}}>{ing.n}</div>
-              <div style={{fontSize:13,fontWeight:600,color:A}}>{ing.a}</div>
-            </div>
-          ))}
-        </div>
+      <div style={{padding:"0 20px"}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:10,marginTop:20}}>Інгредієнти:</div>
+        {(r.ing||[]).map((ing,i)=>(
+          <div key={i} style={{fontSize:13,padding:"8px 0",borderBottom:`1px solid ${BR}`}}>
+            {ing.n} - <span style={{color:A}}>{ing.a}</span>
+          </div>
+        ))}
 
-        <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>Приготування</div>
-        {(r.steps||[]).map((step,i)=>{
-          const mins=step.match(/(\d+)\s*хв/);
-          const act=astep===i;
-          return(
-            <div key={i} onClick={()=>setAstep(act?-1:i)} style={{display:"flex",gap:12,marginBottom:10,padding:"10px",background:act?C:"transparent",borderRadius:12,cursor:"pointer"}}>
-              <div style={{background:act?A:C2,color:"#fff",borderRadius:"50%",width:30,height:30,minWidth:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}}>{i+1}</div>
-              <div style={{flex:1}}>
-                <div style={{fontSize:13,lineHeight:1.7,color:act?TX:SO}}>{step}</div>
-                {act&&mins&&<button onClick={e=>{e.stopPropagation();setTsec(parseInt(mins[1])*60);setTon(true);speak(`Таймер ${mins[1]} хвилин`);}} style={{marginTop:8,background:C2,border:"none",color:A,borderRadius:8,padding:"5px 14px",fontSize:12,cursor:"pointer",fontWeight:600}}>⏱ {mins[1]} хв</button>}
-              </div>
-            </div>
-          );
-        })}
+        <div style={{fontWeight:700,fontSize:14,marginBottom:10,marginTop:20}}>Кроки приготування:</div>
+        {(r.steps||[]).map((s,i)=>(
+          <div key={i} onClick={()=>setStep(step===i?-1:i)} style={{background:step===i?C:C2,padding:10,marginBottom:8,borderRadius:8,cursor:"pointer",fontSize:13,lineHeight:1.6}}>
+            <span style={{fontWeight:700,color:A}}>{i+1}.</span> {s}
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
-// ── AI CHAT PAGE (ОСНОВНЕ) ──
-const AIChatPage=({apiKey,plan,setPlan,shop,setShop,history,setHistory,preferences,setPreferences})=>{
-  const[msgs,setMsgs]=useState([{r:"ai",t:"👋 Привіт! Я твій персональний AI шеф!\n\nЯ можу:\n📖 Пропонувати рецепти\n📸 Аналізувати фото\n🎙️ Слухати голос\n📅 Планувати меню\n💾 Запам'ятовувати смаки\n🔥 Рахувати калорії\n\nЩо ти хочеш зробити?"}]);
+// ── AI CHAT PAGE ──
+const ChatPage=({apiKey})=>{
+  const[msgs,setMsgs]=useState([{r:"ai",t:"Привіт! 👨‍🍳\n\nЯ твій AI шеф. Можу:\n📖 Пропонувати рецепти\n🗣️ Слухати голос\n📅 Планувати меню\n💾 Запам'ятовувати смаки"}]);
   const[inp,setInp]=useState("");
   const[load,setLoad]=useState(false);
-  const[listening,setListening]=useState(false);
-  const[imgFile,setImgFile]=useState(null);
   const{speak}=useVoice();
-  const{listening:isListening,start:startListen}=useSpeechRecognition();
-  const fileRef=useRef();
+  const{listening,start:startListen}=useSpeechRecognition();
   const bot=useRef();
+  const DB=window.RECIPES_DB||[];
 
-  useEffect(()=>{bot.current?.scrollIntoView({behavior:"smooth"});},[msgs]);
+  useEffect(()=>bot.current?.scrollIntoView(),[msgs]);
 
   if(!apiKey)return(
-    <div style={{padding:"20px",textAlign:"center",marginTop:100}}>
-      <div style={{fontSize:64,marginBottom:20}}>🔑</div>
-      <div style={{fontWeight:700,fontSize:18,marginBottom:10}}>Потрібен Claude API</div>
-      <div style={{fontSize:14,color:MU,marginBottom:30}}>Перейди в ⚙️ Налаштування і додай ключ</div>
+    <div style={{padding:20,textAlign:"center",marginTop:60}}>
+      <div style={{fontSize:48,marginBottom:20}}>🔑</div>
+      <div style={{fontWeight:700,fontSize:16,marginBottom:10}}>Потрібен Claude API</div>
+      <div style={{fontSize:13,color:MU}}>Перейди в ⚙️ → Додай ключ</div>
     </div>
   );
-
-  const DB=window.RECIPES_DB||[];
-  
-  const systemPrompt=`Ти персональний AI шеф-кухар. Твоя роль:
-
-1. ЗАПАМ'ЯТОВУВАННЯ: Зберігай вподобання користувача
-   - Смаки: ${preferences.likes?.join(", ")||"не вказані"}
-   - Алергії: ${preferences.allergies?.join(", ")||"немає"}
-   - Дієта: ${preferences.diet||"звична"}
-
-2. ІСТОРІЯ: Знай що їли вчора, пропонуй різноманітність
-   - Вчора їли: ${history.slice(0,3).map(h=>h.name).join(", ")||"ще нічого"}
-
-3. МЕНЮ: Допомагай складати рацион на тиждень
-   - План: ${Object.keys(plan).length>0?'вже складений':'може бути складений'}
-
-4. ПРОПОЗИЦІЇ: Рекомендуй рецепти на основі:
-   - Часу (швидкі/повільні)
-   - Вподобань
-   - Здоров'я (калорії, макроси)
-   - Різноманітності
-
-5. АНАЛІЗ ФОТО: Якщо надіслано фото рецепту/інгредієнтів
-   - Визнай продукти
-   - Запропонуй рецепти
-   - Збережи як рецепт
-
-6. ГОЛОС: Слухай голосові команди
-
-Будь дружелюбним, корисним, розумним. Говори українською.`;
 
   const send=async(text="")=>{
     const t=text||inp;
     if(!t.trim()||load)return;
-    
     setInp("");
     setMsgs(p=>[...p,{r:"u",t}]);
     setLoad(true);
-    setListening(false);
 
     try{
-      const convHistory=[...msgs.map(m=>({role:m.r==="u"?"user":"assistant",content:m.t})),{role:"user",content:t}];
-      
-      const reply=await claude(apiKey,convHistory,systemPrompt,1500);
-      
+      const sys=`Ти AI шеф-кухар. У базі ${DB.length} рецептів. Порадь рецепти з бази!`;
+      const msgs_=[...msgs.map(m=>({role:m.r==="u"?"user":"assistant",content:m.t})),{role:"user",content:t}];
+      const reply=await claude(apiKey,msgs_,sys,800);
       setMsgs(p=>[...p,{r:"ai",t:reply}]);
-      speak(reply.substring(0,200));
-      
-      // Збереження нових вподобань
-      if(reply.includes("запам'ятав") || reply.includes("додав")) setPreferences(p=>({...p,updated:Date.now()}));
+      speak(reply.substring(0,150));
     }catch(e){
-      speak("Помилка");
       setMsgs(p=>[...p,{r:"ai",t:"❌ "+e.message}]);
     }
     setLoad(false);
   };
 
-  const handleImageUpload=async(e)=>{
-    const file=e.target.files[0];
-    if(!file)return;
-    
-    setImgFile(file);
-    setLoad(true);
-    
-    try{
-      const b64=await imageToBase64(file);
-      const prompt=`Проаналізуй це фото рецепту/інгредієнтів. Скажи:
-1. Що ти бачиш?
-2. Які інгредієнти?
-3. Який рецепт можна зробити?
-ВІДПОВІДЬ як {"recipe":{"name":"","ingredients":[""],"steps":[""]}}`;
-      
-      const result=await claude(apiKey,[{role:"user",content:[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:b64}},{type:"text",text:prompt}]}],systemPrompt,800);
-      
-      setMsgs(p=>[...p,{r:"u",t:"[📸 Фото рецепту]"},{r:"ai",t:result}]);
-      speak(result.substring(0,150));
-    }catch(e){
-      speak("Помилка при аналізі фото");
-      setMsgs(p=>[...p,{r:"ai",t:"❌ Не вдалось аналізувати фото: "+e.message}]);
-    }
-    setLoad(false);
-  };
-
-  const quickActs=[
-    {icon:"🍽️",text:"Пропозиція на сьогодні"},
-    {icon:"📅",text:"Меню на тиждень"},
-    {icon:"🔥",text:"Легкі рецепти"},
-    {icon:"💪",text:"Білкові рецепти"},
-  ];
-
   return(
-    <div style={{display:"flex",flexDirection:"column",height:"100dvh"}}>
-      <div style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
-        <div style={{fontWeight:800,fontSize:26,marginBottom:16}}>👨‍🍳 AI Шеф</div>
-        
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:BG}}>
+      <div style={{flex:1,overflowY:"auto",padding:"10px 16px"}}>
         {msgs.map((m,i)=>(
-          <div key={i} style={{display:"flex",justifyContent:m.r==="u"?"flex-end":"flex-start",gap:8,marginBottom:14,alignItems:"flex-end"}}>
-            {m.r==="ai"&&<div style={{width:32,height:32,borderRadius:"50%",background:"#1a3a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>👨‍🍳</div>}
-            <div style={{maxWidth:"80%",padding:"11px 15px",borderRadius:m.r==="u"?"18px 18px 4px 18px":"18px 18px 18px 4px",background:m.r==="u"?A:C,fontSize:14,lineHeight:1.7,whiteSpace:"pre-wrap",color:TX}}>
+          <div key={i} style={{display:"flex",justifyContent:m.r==="u"?"flex-end":"flex-start",marginBottom:12,gap:8}}>
+            {m.r==="ai"&&<div style={{fontSize:28,flexShrink:0}}>👨‍🍳</div>}
+            <div style={{maxWidth:"85%",background:m.r==="u"?A:C,padding:12,borderRadius:12,fontSize:13,lineHeight:1.6,color:"#fff"}}>
               {m.t}
             </div>
-            {m.r==="u"&&<div style={{width:32,height:32,borderRadius:"50%",background:C2,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>👤</div>}
+            {m.r==="u"&&<div style={{fontSize:28,flexShrink:0}}>👤</div>}
           </div>
         ))}
-        
-        {msgs.length<=1&&<div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:16}}>
-          {quickActs.map((a,i)=>(
-            <button key={i} onClick={()=>send(a.text)} style={{background:C,border:`1px solid ${BR}`,color:TX,borderRadius:20,padding:"8px 14px",fontSize:12,cursor:"pointer",display:"flex",gap:6,alignItems:"center"}}>
-              <span>{a.icon}</span>{a.text}
-            </button>
-          ))}
-        </div>}
-        
-        {load&&<div style={{display:"flex",gap:8,marginTop:8}}>
-          <div style={{width:32,height:32,borderRadius:"50%",background:"#1a3a1a",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}><span className="spin">⏳</span></div>
-          <div style={{maxWidth:"80%",padding:"11px 15px",borderRadius:"18px 18px 18px 4px",background:C,fontSize:14,color:MU}}>Думаю...</div>
-        </div>}
-        
+        {load&&<div style={{textAlign:"center",color:MU,fontSize:12}}>⏳ Думаю...</div>}
         <div ref={bot}/>
       </div>
 
-      <div style={{padding:"10px 16px 16px",background:BG,borderTop:`1px solid ${BR}`}}>
-        <div style={{display:"flex",gap:8,marginBottom:10}}>
+      <div style={{padding:"10px 16px 20px",background:"#111",borderTop:`1px solid ${BR}`}}>
+        <div style={{display:"flex",gap:8,marginBottom:8}}>
           <input 
             value={inp} 
             onChange={e=>setInp(e.target.value)} 
             onKeyDown={e=>e.key==="Enter"&&send()} 
-            placeholder="Напиши або натисни 🎤..." 
-            style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:24,padding:"11px 16px",fontSize:14,color:TX,outline:"none"}}
+            placeholder="Напиши..." 
+            style={{flex:1,fontSize:14,padding:10}}
           />
-          <button 
-            onClick={()=>startListen(t=>send(t))} 
-            style={{background:isListening?A:"rgba(232,83,10,.2)",border:"none",color:isListening?"#fff":A,borderRadius:"50%",width:44,height:44,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
-          >
-            🎤
-          </button>
-          <button 
-            onClick={()=>fileRef.current?.click()} 
-            style={{background:"transparent",border:`1px solid ${BR}`,color:A,borderRadius:"50%",width:44,height:44,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}
-          >
-            📸
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleImageUpload} style={{display:"none"}}/>
-          <button 
-            onClick={()=>send()} 
-            disabled={load||!inp.trim()} 
-            style={{padding:"11px 20px",background:load||!inp.trim()?"#444":A,color:"#fff",border:"none",borderRadius:24,fontSize:18,fontWeight:700,cursor:load||!inp.trim()?"not-allowed":"pointer"}}
-          >
-            ➤
-          </button>
+          <button onClick={()=>startListen(t=>send(t))} style={{background:listening?A:"#333",color:listening?"#fff":MU,width:44,height:44,borderRadius:"50%",fontSize:18,border:"none",cursor:"pointer"}}>🎤</button>
+          <button onClick={()=>send()} style={{background:A,color:"#fff",width:44,height:44,borderRadius:"50%",fontSize:18,border:"none",cursor:"pointer"}}>➤</button>
         </div>
       </div>
     </div>
   );
 };
 
-// ── RECIPES BROWSE ──
-const RecipesBrowsePage=({onOpen})=>{
+// ── RECIPES PAGE ──
+const RecipesPage=({onOpen})=>{
   const[search,setSearch]=useState("");
-  const[cat,setCat]=useState("Всі");
   const DB=window.RECIPES_DB||[];
   
   const filtered=useMemo(()=>{
-    let r=DB;
-    if(cat!=="Всі")r=r.filter(x=>x.cat===cat);
-    if(search){
-      const q=search.toLowerCase();
-      r=r.filter(x=>x.name.toLowerCase().includes(q)||(x.main||[]).some(m=>m.toLowerCase().includes(q)));
-    }
-    return r;
-  },[search,cat]);
+    if(!search)return DB;
+    const q=search.toLowerCase();
+    return DB.filter(r=>r.name.toLowerCase().includes(q));
+  },[search,DB]);
 
   return(
-    <div style={{padding:"14px 16px 0"}}>
-      <div style={{fontWeight:800,fontSize:26,marginBottom:12}}>📖 Рецепти</div>
+    <div style={{padding:"12px 16px"}}>
+      <div style={{fontWeight:800,fontSize:20,marginBottom:12}}>📖 Рецепти ({DB.length})</div>
       <input 
         value={search} 
         onChange={e=>setSearch(e.target.value)} 
         placeholder="Пошук..." 
-        style={{background:"#242424",border:"1px solid #333",borderRadius:10,padding:"10px 14px",fontSize:14,color:"#f0f0f0",outline:"none",width:"100%",marginBottom:12}}
+        style={{width:"100%",marginBottom:12,fontSize:14,padding:10}}
       />
-      <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:12}}>
-        {["Всі",...CATS].map(c=>(
-          <button key={c} onClick={()=>setCat(c)} style={{background:cat===c?A:"#242424",border:"none",color:cat===c?"#fff":"#999",borderRadius:20,padding:"7px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>
-            {c}
-          </button>
-        ))}
-      </div>
-      <div style={{fontSize:12,color:"#666",marginBottom:10}}>{filtered.length} рецептів</div>
-      {filtered.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)}/>)}
+      <div style={{fontSize:12,color:MU,marginBottom:12}}>Знайдено: {filtered.length}</div>
+      {filtered.slice(0,50).map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)}/>)}
+      {filtered.length>50&&<div style={{textAlign:"center",color:MU,fontSize:12}}>+ ще {filtered.length-50}</div>}
     </div>
   );
 };
 
 // ── PLAN PAGE ──
 const PlanPage=({plan,setPlan})=>{
-  const weekDates=useMemo(()=>getWeekDates(),[]);
   const[selDay,setSelDay]=useState(0);
+  const weekDates=useMemo(()=>getWeekDates(),[]);
   const DB=window.RECIPES_DB||[];
 
   const genMenu=()=>{
     const np={...plan};
     for(let i=0;i<7;i++){
-      for(let meal of PLAN_MEALS){
+      PLAN_MEALS.forEach(meal=>{
         const pool=DB.filter(r=>r.cat===meal);
         if(pool.length){
           const r=pool[Math.floor(Math.random()*pool.length)];
           np[`${i}-${meal}`]=[r];
         }
-      }
+      });
     }
     setPlan(np);
   };
 
   return(
-    <div style={{padding:"14px 16px 0"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-        <div style={{fontWeight:800,fontSize:26}}>📅 Раціон</div>
-        <button onClick={genMenu} style={{background:A,border:"none",color:"#fff",borderRadius:10,padding:"7px 14px",fontSize:12,cursor:"pointer"}}>✨ Генерувати</button>
-      </div>
+    <div style={{padding:"12px 16px"}}>
+      <div style={{fontWeight:800,fontSize:20,marginBottom:12}}>📅 Меню</div>
+      <button onClick={genMenu} style={{width:"100%",background:A,color:"#fff",border:"none",padding:12,borderRadius:8,fontWeight:700,marginBottom:12,cursor:"pointer"}}>✨ Генерувати тиждень</button>
 
-      <div style={{display:"flex",gap:2,overflowX:"auto",marginBottom:16}}>
+      <div style={{display:"flex",gap:4,overflowX:"auto",marginBottom:14}}>
         {weekDates.map((d,i)=>(
-          <button key={i} onClick={()=>setSelDay(i)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"8px",background:selDay===i?A:"#242424",border:"none",color:selDay===i?"#fff":"#999",borderRadius:10,cursor:"pointer"}}>
-            <span style={{fontSize:11,fontWeight:700}}>{d.day}</span>
-            <span style={{fontSize:14}}>{d.date}</span>
+          <button key={i} onClick={()=>setSelDay(i)} style={{flex:1,minWidth:50,background:selDay===i?A:C,border:"none",color:selDay===i?"#fff":TX,borderRadius:8,padding:10,fontSize:11,cursor:"pointer",whiteSpace:"nowrap"}}>
+            <div style={{fontWeight:700}}>{d.day}</div>
+            <div>{d.date}.{d.month}</div>
           </button>
         ))}
       </div>
@@ -466,18 +312,13 @@ const PlanPage=({plan,setPlan})=>{
         const k=`${selDay}-${meal}`;
         const r=plan[k]?.[0];
         return(
-          <div key={meal} style={{background:C,borderRadius:12,padding:16,marginBottom:10}}>
-            <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>{MEAL_ICONS[meal]} {meal}</div>
+          <div key={meal} style={{background:C,padding:12,marginBottom:10,borderRadius:8}}>
+            <div style={{fontWeight:700,marginBottom:8}}>{MEAL_ICONS[meal]} {meal}</div>
             {r?<div>
-              <div style={{display:"flex",gap:10,marginBottom:10}}>
-                <div style={{fontSize:48}}>{r.e}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontSize:14,fontWeight:600}}>{r.name}</div>
-                  <div style={{fontSize:12,color:MU}}>⏱ {r.time} хв · 🔥 {r.kcal} ккал</div>
-                </div>
-              </div>
-              <button onClick={()=>setPlan(p=>({...p,[k]:[]}))} style={{width:"100%",background:"rgba(255,68,68,.2)",border:"none",color:"#ff4444",borderRadius:8,padding:"8px",cursor:"pointer",fontSize:12}}>✕ Видалити</button>
-            </div>:<div style={{color:MU,fontSize:13}}>Порожньо</div>}
+              <div style={{fontSize:14,fontWeight:600,marginBottom:4}}>{r.e} {r.name}</div>
+              <div style={{fontSize:12,color:MU}}>⏱ {r.time} хв • 🔥 {r.kcal} ккал</div>
+              <button onClick={()=>setPlan(p=>({...p,[k]:[]}))} style={{marginTop:8,width:"100%",background:"#ff4444",color:"#fff",border:"none",padding:8,borderRadius:6,fontSize:12,cursor:"pointer"}}>✕ Видалити</button>
+            </div>:<div style={{color:MU,fontSize:12}}>Пусто</div>}
           </div>
         );
       })}
@@ -488,18 +329,15 @@ const PlanPage=({plan,setPlan})=>{
 // ── SETTINGS ──
 const SettingsPage=({apiKey,setApiKey})=>{
   const[k,setK]=useState(apiKey);
-  const[ok,setOk]=useState(false);
 
   return(
-    <div style={{padding:"14px 16px 0"}}>
-      <div style={{fontWeight:800,fontSize:26,marginBottom:20}}>⚙️ Налаштування</div>
-      <div style={{background:C,borderRadius:16,padding:20}}>
-        <div style={{fontWeight:700,fontSize:16,marginBottom:6}}>🔑 Claude API ключ</div>
-        <div style={{fontSize:13,color:MU,marginBottom:12}}>Без цього AI не працює. Зберігається локально.</div>
-        <input type="password" value={k} onChange={e=>setK(e.target.value)} placeholder="sk-ant-..." style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",fontSize:13,color:TX,outline:"none",width:"100%",marginBottom:12,fontFamily:"monospace"}}/>
-        <button onClick={()=>{setApiKey(k);setOk(true);setTimeout(()=>setOk(false),2000);}} style={{width:"100%",padding:12,background:ok?G:A,border:"none",color:"#fff",borderRadius:10,fontWeight:700,fontSize:14,cursor:"pointer"}}>
-          {ok?"✓ Збережено":"Зберегти"}
-        </button>
+    <div style={{padding:"12px 16px"}}>
+      <div style={{fontWeight:800,fontSize:20,marginBottom:20}}>⚙️ Налаштування</div>
+      <div style={{background:C,padding:16,borderRadius:8}}>
+        <div style={{fontWeight:700,fontSize:14,marginBottom:6}}>🔑 Claude API</div>
+        <div style={{fontSize:12,color:MU,marginBottom:10}}>Без цього AI не працює</div>
+        <input type="password" value={k} onChange={e=>setK(e.target.value)} placeholder="sk-ant-..." style={{width:"100%",marginBottom:10}}/>
+        <button onClick={()=>{setApiKey(k);alert("✓ Збережено");}} style={{width:"100%",background:A,color:"#fff",border:"none",padding:12,borderRadius:8,fontWeight:700,cursor:"pointer"}}>Зберегти</button>
       </div>
     </div>
   );
@@ -508,35 +346,26 @@ const SettingsPage=({apiKey,setApiKey})=>{
 // ── MAIN APP ──
 const App=()=>{
   const[tab,setTab]=useState("chat");
-  const[apiKey,setApiKey]=useLS("khawk_key7","");
-  const[plan,setPlan]=useLS("khawk_plan7",{});
-  const[shop,setShop]=useLS("khawk_shop7",[]);
-  const[history,setHistory]=useLS("khawk_history7",[]);
-  const[preferences,setPreferences]=useLS("khawk_prefs7",{likes:[],allergies:[],diet:"звична"});
+  const[apiKey,setApiKey]=useLS("khawk_key8","");
+  const[plan,setPlan]=useLS("khawk_plan8",{});
   const[detail,setDetail]=useState(null);
-
-  const TABS=[
-    {id:"chat",icon:"👨‍🍳",label:"Шеф"},
-    {id:"recipes",icon:"📖",label:"Рецепти"},
-    {id:"plan",icon:"📅",label:"Меню"},
-    {id:"settings",icon:"⚙️",label:"Налашт."}
-  ];
+  const DB=window.RECIPES_DB||[];
 
   return(
-    <div style={{background:BG,minHeight:"100dvh",color:TX,display:"flex",flexDirection:"column"}}>
+    <div style={{background:BG,minHeight:"100vh",color:TX}}>
       {detail&&<RDetail r={detail} onBack={()=>setDetail(null)}/>}
 
-      <div style={{flex:1,overflowY:"auto",paddingBottom:tab==="chat"?0:80}}>
-        {tab==="chat"&&<AIChatPage apiKey={apiKey} plan={plan} setPlan={setPlan} shop={shop} setShop={setShop} history={history} setHistory={setHistory} preferences={preferences} setPreferences={setPreferences}/>}
-        {tab==="recipes"&&<RecipesBrowsePage onOpen={r=>setDetail(r)}/>}
+      <div style={{paddingBottom:60}}>
+        {tab==="chat"&&<ChatPage apiKey={apiKey}/>}
+        {tab==="recipes"&&<RecipesPage onOpen={r=>setDetail(r)}/>}
         {tab==="plan"&&<PlanPage plan={plan} setPlan={setPlan}/>}
         {tab==="settings"&&<SettingsPage apiKey={apiKey} setApiKey={setApiKey}/>}
       </div>
 
-      <div style={{background:"#111",display:"flex",position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,borderTop:`1px solid ${BR}`,zIndex:50}}>
-        {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:2,padding:"10px 2px 8px",border:"none",background:"transparent",color:tab===t.id?A:MU,cursor:"pointer",fontSize:9,fontWeight:tab===t.id?700:400,borderTop:tab===t.id?`2px solid ${A}`:"2px solid transparent"}}>
-            <span style={{fontSize:19}}>{t.icon}</span>{t.label}
+      <div style={{position:"fixed",bottom:0,left:0,right:0,background:"#111",borderTop:`1px solid ${BR}`,display:"flex",zIndex:50,height:60}}>
+        {[{id:"chat",icon:"👨‍🍳",l:"Шеф"},{id:"recipes",icon:"📖",l:"Рецепти"},{id:"plan",icon:"📅",l:"Меню"},{id:"settings",icon:"⚙️",l:"Налашт."}].map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,background:"none",border:"none",color:tab===t.id?A:MU,display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",fontSize:10,fontWeight:tab===t.id?700:400}}>
+            <span style={{fontSize:18}}>{t.icon}</span>{t.l}
           </button>
         ))}
       </div>
