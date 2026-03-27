@@ -4,16 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KitchenHawk">
 <meta name="theme-color" content="#1a1a1a">
 <title>KitchenHawk</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{background:#1a1a1a;font-family:-apple-system,sans-serif;color:#f0f0f0;overscroll-behavior:none}
+html,body{background:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#f0f0f0;overscroll-behavior:none}
 #root{max-width:430px;margin:0 auto;min-height:100dvh}
 ::-webkit-scrollbar{width:0;height:0}
 input,select,textarea,button{font-family:inherit}
-.fade{animation:fadeUp .25s ease}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeUp .25s ease}
 </style>
 </head>
 <body>
@@ -36,106 +39,225 @@ const useLS=(key,def)=>{
 };
 
 const claude=async(key,msgs,sys="",max=800)=>{
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:"claude-3-5-sonnet-20241022",max_tokens:max,system:sys,messages:msgs})});
+  const r=await fetch("https://api.anthropic.com/v1/messages",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+    body:JSON.stringify({model:"claude-3-5-sonnet-20241022",max_tokens:max,system:sys,messages:msgs})
+  });
   const d=await r.json();
   if(d.error)throw new Error(d.error.message);
   return d.content.map(b=>b.text||"").join("");
 };
 
+const getWeekDates=()=>{
+  const today=new Date();
+  const dow=today.getDay();
+  const mondayOffset=dow===0?-6:1-dow;
+  const monday=new Date(today);
+  monday.setDate(today.getDate()+mondayOffset);
+  return Array.from({length:7},(_,i)=>{
+    const d=new Date(monday);
+    d.setDate(monday.getDate()+i);
+    return{date:d.getDate(),isToday:d.toDateString()===today.toDateString()};
+  });
+};
+
 const CATS=["Всі","Сніданок","Суп","Обід","Вечеря","Десерт","Перекус"];
+const DAYS_SHORT=["Пн","Вт","Ср","Чт","Пт","Сб","Нд"];
+const PLAN_MEALS=["Сніданок","Суп","Вечеря"];
 const MEAL_ICONS={Сніданок:"☀️",Суп:"🍲",Вечеря:"🌙"};
-const PLAN_MEALS=Object.keys(MEAL_ICONS);
 
 const RCard=({r,onOpen,onAdd,onFav,faved,onHide})=>(
   <div className="fade" style={{background:C,borderRadius:16,overflow:"hidden",marginBottom:12,cursor:"pointer"}} onClick={onOpen}>
-    <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"14px 14px 10px",display:"flex",gap:12}}>
-      <div style={{fontSize:42}}>{r.e||"🍽️"}</div>
-      <div style={{flex:1}}>
-        <div style={{fontWeight:700,fontSize:15,marginBottom:6}}>{r.name}</div>
+    <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"14px 14px 10px",display:"flex",gap:12,position:"relative"}}>
+      <div style={{fontSize:42,flexShrink:0,lineHeight:1}}>{r.e||"🍽️"}</div>
+      <div style={{flex:1,minWidth:0}}>
+        <div style={{fontWeight:700,fontSize:15,lineHeight:1.3,marginBottom:6}}>{r.name}</div>
         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
           <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>⏱ {r.time} хв</span>
           <span style={{background:"rgba(255,255,255,.1)",borderRadius:20,padding:"2px 9px",fontSize:11}}>🔥 {r.kcal} ккал</span>
         </div>
       </div>
-      <div style={{display:"flex",flexDirection:"column",gap:6}}>
-        <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"rgba(0,0,0,.4)",border:"none",color:faved?"#ff6b6b":TX,borderRadius:"50%",width:32,height:32,cursor:"pointer"}}>♥</button>
-        <button onClick={e=>{e.stopPropagation();onHide();}} style={{background:"rgba(0,0,0,.4)",border:"none",color:TX,borderRadius:"50%",width:32,height:32,cursor:"pointer"}}>👁</button>
+      <div style={{display:"flex",flexDirection:"column",gap:6,flexShrink:0}}>
+        <button onClick={e=>{e.stopPropagation();onFav();}} style={{background:"rgba(0,0,0,.4)",border:"none",color:faved?"#ff6b6b":TX,borderRadius:"50%",width:32,height:32,fontSize:17,cursor:"pointer"}}>♥</button>
+        <button onClick={e=>{e.stopPropagation();onHide();}} style={{background:"rgba(0,0,0,.4)",border:"none",color:TX,borderRadius:"50%",width:32,height:32,fontSize:14,cursor:"pointer"}}>○</button>
+        <button onClick={e=>{e.stopPropagation();onAdd();}} style={{background:A,border:"none",color:"#fff",borderRadius:"50%",width:32,height:32,fontSize:20,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
       </div>
     </div>
   </div>
 );
 
 const RDetail=({r,srv,setSrv,onBack,onPlan,apiKey,prefs})=>{
-  const askRep=async(ing)=>{
-    if(!apiKey)return alert("потрібен api ключ");
+  const[astep,setAstep]=useState(-1);
+  const[tsec,setTsec]=useState(0);
+  const[ton,setTon]=useState(false);
+  const ref=useRef();
+
+  useEffect(()=>{
+    if(ton&&tsec>0)ref.current=setTimeout(()=>setTsec(s=>s-1),1000);
+    else if(tsec===0&&ton)setTon(false);
+    return()=>clearTimeout(ref.current);
+  },[ton,tsec]);
+  
+  const fmt=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;
+
+  const askReplace=async(ing)=>{
+    if(!apiKey){alert("потрібен ключ api!");return;}
     try{
-      const res=await claude(apiKey,[{role:"user",content:`чим замінити ${ing} у страві ${r.name}?`}],prefs?`вподобання користувача: ${prefs}`:"",200);
-      alert(res);
-    }catch(e){alert("помилка")}
+      const res=await claude(apiKey,[{role:"user",content:`чим можна замінити інгредієнт "${ing}" у страві "${r.name}"? напиши 1-2 варіанти коротко.`}],`кулінар. вподобання користувача: ${prefs}`,200);
+      alert("➤ заміна: " + res);
+    }catch(e){alert("помилка з'єднання");}
   };
+
   return(
-    <div style={{position:"fixed",inset:0,background:BG,zIndex:100,overflowY:"auto",maxWidth:430,margin:"0 auto"}}>
-      <div style={{padding:"60px 20px 20px",background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)"}}>
-        <button onClick={onBack} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,.5)",border:"none",color:"#fff",borderRadius:"50%",width:42,height:42,fontSize:20}}>←</button>
-        <div style={{fontSize:64}}>{r.e||"🍽️"}</div>
-        <div style={{fontWeight:800,fontSize:24}}>{r.name}</div>
+    <div style={{position:"fixed",inset:0,background:BG,zIndex:100,maxWidth:430,margin:"0 auto",overflowY:"auto"}}>
+      {ton&&tsec>0&&<div style={{position:"fixed",top:0,left:"50%",transform:"translateX(-50%)",maxWidth:430,width:"100%",zIndex:200,background:A,padding:"11px 20px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <span style={{fontWeight:800,fontSize:20}}>⏱ {fmt(tsec)}</span>
+        <button onClick={()=>setTon(false)} style={{background:"rgba(0,0,0,.3)",border:"none",color:"#fff",borderRadius:20,padding:"5px 16px",cursor:"pointer"}}>стоп</button>
+      </div>}
+
+      <div style={{background:"linear-gradient(135deg,#2a1a0a,#1a1a2a)",padding:"60px 20px 24px",position:"relative"}}>
+        <button onClick={onBack} style={{position:"absolute",top:16,left:16,background:"rgba(0,0,0,.5)",border:"none",color:"#fff",borderRadius:"50%",width:42,height:42,fontSize:20,cursor:"pointer"}}>←</button>
+        <div style={{fontSize:64,marginBottom:10}}>{r.e||"🍽️"}</div>
+        <div style={{fontWeight:800,fontSize:24,lineHeight:1.2,marginBottom:8}}>{r.name}</div>
       </div>
-      <div style={{padding:"20px"}}>
+
+      <div style={{padding:"20px 20px 100px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,background:C,borderRadius:12,padding:"10px 16px",marginBottom:16}}>
+          <span style={{fontSize:13,color:MU,flex:1}}>кількість порцій:</span>
+          <button onClick={()=>setSrv(s=>Math.max(1,s-1))} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:30,height:30,fontSize:20,cursor:"pointer"}}>−</button>
+          <span style={{fontWeight:800,fontSize:20,minWidth:26,textAlign:"center"}}>{srv}</span>
+          <button onClick={()=>setSrv(s=>s+1)} style={{background:C2,border:"none",color:TX,borderRadius:"50%",width:30,height:30,fontSize:20,cursor:"pointer"}}>+</button>
+        </div>
+
         <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>інгредієнти</div>
-        <div style={{background:C,borderRadius:14,marginBottom:20}}>
+        <div style={{background:C,borderRadius:14,overflow:"hidden",marginBottom:20}}>
           {(r.ing||[]).map((ing,i)=>(
-            <div key={i} style={{display:"flex",alignItems:"center",padding:"11px 16px",borderBottom:`1px solid ${BR}`}}>
-              <div style={{flex:1}}>{ing.n} - <span style={{color:A}}>{ing.a}</span></div>
-              <button onClick={()=>askRep(ing.n)} style={{background:C2,border:"none",color:MU,padding:"4px 8px",borderRadius:8,fontSize:12}}>🔄 заміна</button>
+            <div key={i} style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",borderBottom:i<(r.ing||[]).length-1?`1px solid ${BR}`:"none"}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:A,flexShrink:0}}/>
+              <div style={{flex:1,fontSize:14}}>{ing.n}</div>
+              <div style={{fontSize:13,fontWeight:600,color:A}}>{ing.a}</div>
+              <button onClick={()=>askReplace(ing.n)} style={{background:C2,border:"none",color:MU,padding:"4px 8px",borderRadius:6,fontSize:11,cursor:"pointer"}}>➤ заміна</button>
             </div>
           ))}
         </div>
-        <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>кроки</div>
-        {(r.steps||[]).map((s,i)=><div key={i} style={{marginBottom:10,fontSize:13,lineHeight:1.6,padding:"10px",background:C,borderRadius:12}}><strong style={{color:A}}>{i+1}.</strong> {s}</div>)}
-        <button onClick={()=>onPlan(r)} style={{width:"100%",padding:14,background:A,border:"none",color:"#fff",borderRadius:12,fontWeight:700,marginTop:10}}>+ в раціон</button>
+
+        <div style={{fontWeight:700,fontSize:17,marginBottom:12}}>приготування</div>
+        {(r.steps||[]).map((step,i)=>{
+          const act=astep===i;
+          return(
+            <div key={i} onClick={()=>setAstep(act?-1:i)} style={{display:"flex",gap:12,marginBottom:10,padding:"10px",background:act?C:"transparent",borderRadius:12,cursor:"pointer"}}>
+              <div style={{background:act?A:C2,color:"#fff",borderRadius:"50%",width:30,height:30,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700,fontSize:13}}>{i+1}</div>
+              <div style={{flex:1}}>
+                <div style={{fontSize:13,lineHeight:1.7,color:act?TX:SO}}>{step}</div>
+              </div>
+            </div>
+          );
+        })}
+
+        <button onClick={()=>onPlan(r)} style={{width:"100%",padding:14,background:A,border:"none",color:"#fff",borderRadius:12,fontWeight:700,fontSize:14,cursor:"pointer",marginTop:20}}>+ в раціон</button>
       </div>
     </div>
   );
 };
 
-const RecipesPage=({faves,onFav,onOpen,myRecs,setMyRecs,apiKey,hidden,setHidden})=>{
+const RecipesPage=({faves,onFav,onAdd,onOpen,myRecs,setMyRecs,apiKey,hidden,setHidden,prefs})=>{
+  const[sub,setSub]=useState("browse");
   const[cat,setCat]=useState("Всі");
+  const[search,setSearch]=useState("");
+  const[ttText,setTtText]=useState("");
+  const[ttLoad,setTtLoad]=useState(false);
+
   const DB=window.RECIPES_DB||[];
-  const all=useMemo(()=>[...DB,...myRecs].filter(r=>!hidden.includes(r.id)),[myRecs,hidden]);
-  const fil=cat==="Всі"?all:all.filter(x=>x.cat===cat);
-  
+  const allR=useMemo(()=>[...DB,...myRecs].filter(r=>!hidden.includes(r.id)),[myRecs,hidden]);
+
+  const filtered=useMemo(()=>{
+    let r=allR;
+    if(cat!=="Всі")r=r.filter(x=>x.cat===cat);
+    if(search){const q=search.toLowerCase();r=r.filter(x=>x.name.toLowerCase().includes(q));}
+    return r;
+  },[allR,cat,search]);
+
+  const generateAI=async()=>{
+    if(!apiKey){alert("потрібен api ключ!");return;}
+    setTtLoad(true);
+    try{
+      const sys=`ти кулінар. поверни тільки json масив з 3 рецептами. формат: [{"name":"назва","cat":"Сніданок або Суп або Обід або Вечеря","time":20,"kcal":400,"p":20,"f":15,"c":40,"e":"●","tags":["смачно"],"main":["курка"],"ing":[{"n":"курка","a":"200г"}],"steps":["крок 1"]}]`;
+      const q=`згенеруй 3 нових крутих рецепти. врахуй вподобання: ${prefs}`;
+      const raw=await claude(apiKey,[{role:"user",content:q}],sys,1500);
+      const arr=JSON.parse(raw.replace(/```json|```/g,"").trim());
+      const newRecs=arr.map(x=>({...x,id:"ai_"+Date.now()+Math.random(),source:"ai"}));
+      setMyRecs(p=>[...newRecs,...p]);
+      alert("✓ додано 3 нових рецепти!");
+    }catch(e){alert("помилка генерації");}
+    setTtLoad(false);
+  };
+
+  const inp={background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px 14px",fontSize:14,color:TX,outline:"none",width:"100%"};
+
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{fontWeight:800,fontSize:26,marginBottom:12}}>рецепти</div>
-      <div style={{display:"flex",gap:6,overflowX:"auto",marginBottom:12}}>
-        {CATS.map(c=><button key={c} onClick={()=>setCat(c)} style={{background:cat===c?A:C,border:"none",color:cat===c?"#fff":MU,borderRadius:20,padding:"7px 14px",fontSize:12}}>{c}</button>)}
+
+      <div style={{display:"flex",background:C,borderRadius:20,padding:3,marginBottom:14,gap:2}}>
+        {[["browse","🔍 пошук"],["mine","⭐ мої"]].map(([v,l])=>(
+          <button key={v} onClick={()=>setSub(v)} style={{flex:1,background:sub===v?A:"transparent",border:"none",color:sub===v?"#fff":MU,borderRadius:18,padding:"7px 2px",fontSize:11,cursor:"pointer"}}>{l}</button>
+        ))}
       </div>
-      {fil.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)} onHide={()=>setHidden(p=>[...p,r.id])}/>)}
+
+      {sub==="browse"&&<>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="пошук..." style={{...inp,marginBottom:10}}/>
+        <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:8,marginBottom:8}}>
+          {CATS.map(c=><button key={c} onClick={()=>setCat(c)} style={{background:cat===c?A:C,border:"none",color:cat===c?"#fff":MU,borderRadius:20,padding:"7px 14px",fontSize:12,cursor:"pointer",whiteSpace:"nowrap"}}>{c}</button>)}
+        </div>
+        {filtered.map(r=><RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)} onHide={()=>setHidden(p=>[...p,r.id])}/>)}
+      </>}
+
+      {sub==="mine"&&<>
+        <button onClick={generateAI} disabled={ttLoad} style={{width:"100%",padding:14,background:ttLoad?"#444":A,border:"none",color:"#fff",borderRadius:12,fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:16}}>
+          {ttLoad?"⏳ генерую...":"✦ згенерувати 3 нові рецепти"}
+        </button>
+        {myRecs.filter(r=>!hidden.includes(r.id)).map(r=>(
+          <RCard key={r.id} r={r} onOpen={()=>onOpen(r)} onAdd={()=>onAdd(r)} onFav={()=>onFav(r.id)} faved={faves.includes(r.id)} onHide={()=>setHidden(p=>[...p,r.id])}/>
+        ))}
+      </>}
     </div>
   );
 };
 
-const PlanPage=({plan,setPlan,shop,setShop})=>{
-  const days=["пн","вт","ср","чт","пт","сб","нд"];
-  const[day,setDay]=useState(0);
-  const dayKcal=PLAN_MEALS.flatMap(m=>plan[`${day}-${m}`]||[]).reduce((s,r)=>s+r.kcal,0);
-  
+const PlanPage=({plan,setPlan,shop,setShop,srv,setSrv})=>{
+  const weekDates=useMemo(()=>getWeekDates(),[]);
+  const[selDay,setSelDay]=useState(()=>{const d=new Date().getDay();return d===0?6:d-1;});
+  const rem=(d,m)=>{setPlan(p=>({...p,[`${d}-${m}`]:[]}))} ;
+  const dayKcal=PLAN_MEALS.flatMap(m=>(plan[`${selDay}-${m}`]||[])).reduce((s,r)=>s+r.kcal,0);
+
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
         <div style={{fontWeight:800,fontSize:26}}>раціон</div>
-        {dayKcal>0&&<div style={{color:A,fontWeight:700}}>~{dayKcal} ккал</div>}
       </div>
-      <div style={{display:"flex",gap:4,marginBottom:14}}>
-        {days.map((d,i)=><button key={i} onClick={()=>setDay(i)} style={{flex:1,background:day===i?A:C,border:"none",color:day===i?"#fff":MU,padding:"8px",borderRadius:10}}>{d}</button>)}
+      <div style={{display:"flex",overflowX:"auto",marginBottom:14,gap:2}}>
+        {weekDates.map((d,i)=>(
+          <div key={i} onClick={()=>setSelDay(i)} style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:46,cursor:"pointer"}}>
+            <div style={{fontSize:10,color:d.isToday?A:selDay===i?TX:MU,marginBottom:4}}>{DAYS_SHORT[i]}</div>
+            <div style={{width:36,height:36,borderRadius:"50%",background:selDay===i?A:d.isToday?"rgba(232,83,10,.2)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:14,color:selDay===i?"#fff":d.isToday?A:MU}}>{d.date}</div>
+          </div>
+        ))}
       </div>
       {PLAN_MEALS.map(meal=>{
-        const items=plan[`${day}-${meal}`]||[];
+        const items=plan[`${selDay}-${meal}`]||[];
         return(
           <div key={meal} style={{background:C,borderRadius:16,padding:16,marginBottom:10}}>
-            <div style={{fontWeight:700,marginBottom:10}}>{MEAL_ICONS[meal]} {meal}</div>
-            {items.map((r,i)=><div key={i} style={{fontSize:14,borderTop:`1px solid ${BR}`,paddingTop:8}}>{r.name}</div>)}
-            {!items.length&&<div style={{fontSize:12,color:MU}}>порожньо</div>}
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:items.length?12:0}}>
+              <div style={{fontWeight:700,fontSize:16}}>{MEAL_ICONS[meal]} {meal}</div>
+              {items.length>0&&<button onClick={()=>rem(selDay,meal)} style={{background:C2,border:"none",color:MU,borderRadius:20,padding:"4px 12px",fontSize:12,cursor:"pointer"}}>✕ очистити</button>}
+            </div>
+            {items.map((r,i)=>(
+              <div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 0",borderTop:`1px solid ${BR}`}}>
+                <div style={{flex:1}}><div style={{fontSize:14,fontWeight:600}}>{r.name}</div></div>
+                <button onClick={()=>rem(selDay,meal)} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:22}}>×</button>
+              </div>
+            ))}
           </div>
         );
       })}
@@ -144,23 +266,23 @@ const PlanPage=({plan,setPlan,shop,setShop})=>{
 };
 
 const CaloriesPage=({apiKey,goal})=>{
-  const[diary,setDiary]=useLS("kh_d",[]);
-  const[load,setLoad]=useState(false);
-  const tot=diary.reduce((s,x)=>s+(+x.kcal||0),0);
+  const[diary,setDiary]=useLS("khawk_diary_new",[]);
+  const[aiLoad,setAiLoad]=useState(false);
+  const tot=diary.reduce((a,x)=>a+(+x.kcal||0),0);
 
-  const scan=async(e)=>{
+  const scanPhoto=async(e)=>{
     const file=e.target.files[0];
     if(!file||!apiKey)return;
-    setLoad(true);
+    setAiLoad(true);
     const reader=new FileReader();
     reader.onload=async(ev)=>{
       try{
         const b64=ev.target.result.split(",")[1];
-        const res=await claude(apiKey,[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:b64}},{type:"text",text:"оціни страву. тільки json: {\"name\":\"назва\",\"kcal\":число,\"e\":\"emoji\"}"}]}],"тільки json",300);
-        const d=JSON.parse(res.replace(/```json|```/g,"").trim());
-        setDiary(p=>[...p,{...d,id:Date.now()}]);
+        const res=await claude(apiKey,[{role:"user",content:[{type:"image",source:{type:"base64",media_type:file.type,data:b64}},{type:"text",text:"оціни страву на фото. тільки json: {\"name\":\"назва\",\"kcal\":число,\"e\":\"●\"}"}]}],"тільки json",300);
+        const parsed=JSON.parse(res.replace(/```json|```/g,"").trim());
+        setDiary(p=>[...p,{...parsed,id:Date.now()}]);
       }catch(err){alert("помилка сканування");}
-      setLoad(false);
+      setAiLoad(false);
     };
     reader.readAsDataURL(file);
   };
@@ -168,25 +290,36 @@ const CaloriesPage=({apiKey,goal})=>{
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{fontWeight:800,fontSize:26,marginBottom:14}}>калорії</div>
-      <div style={{textAlign:"center",fontSize:32,fontWeight:900,color:tot>goal?A:G,marginBottom:20}}>{tot} / {goal}</div>
+      <div style={{textAlign:"center",fontSize:32,fontWeight:900,color:tot>goal?A:G,marginBottom:20}}>{tot} / {goal} ккал</div>
+      
       <div style={{background:C,borderRadius:14,padding:16,marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:10}}>📷 сканер по фото</div>
-        <label style={{display:"block",padding:"12px",background:A,textAlign:"center",borderRadius:10,color:"#fff",fontWeight:700}}>{load?"⏳ сканую...":"завантажити фото"}
-          <input type="file" accept="image/*" onChange={scan} style={{display:"none"}} disabled={load}/>
+        <div style={{fontWeight:700,fontSize:15,marginBottom:10}}>📷 сканер по фото</div>
+        <label style={{display:"block",padding:"12px",background:A,textAlign:"center",borderRadius:10,color:"#fff",fontWeight:700,cursor:"pointer"}}>
+          {aiLoad?"⏳ сканую...":"завантажити фото"}
+          <input type="file" accept="image/*" onChange={scanPhoto} style={{display:"none"}} disabled={aiLoad}/>
         </label>
       </div>
-      {diary.map(e=><div key={e.id} style={{background:C,padding:"10px",borderRadius:10,marginBottom:8}}>{e.e} {e.name} - <strong style={{color:A}}>{e.kcal} ккал</strong></div>)}
+
+      {diary.map(e=>(
+        <div key={e.id} style={{background:C,borderRadius:12,padding:"12px 14px",marginBottom:8,display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:24}}>{e.e}</div>
+          <div style={{flex:1,fontSize:14,fontWeight:600}}>{e.name}</div>
+          <div style={{fontWeight:800,fontSize:18,color:A}}>{e.kcal}</div>
+          <button onClick={()=>setDiary(p=>p.filter(x=>x.id!==e.id))} style={{background:"none",border:"none",color:MU,cursor:"pointer",fontSize:20}}>×</button>
+        </div>
+      ))}
     </div>
   );
 };
 
 const ChatPage=({apiKey,prefs})=>{
-  const[hist,setHist]=useState([{r:"ai",t:"що підказати?"}]);
+  const[msgs,setMsgs]=useState([{r:"ai",t:"що підказати?"}]);
   const[inp,setInp]=useState("");
-  
-  const mic=()=>{
+  const[load,setLoad]=useState(false);
+
+  const startVoice=()=>{
     const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-    if(!SR)return alert("немає підтримки");
+    if(!SR){alert("браузер не підтримує голос");return;}
     const r=new SR();
     r.lang="uk-UA";
     r.onresult=e=>setInp(e.results[0][0].transcript);
@@ -194,45 +327,74 @@ const ChatPage=({apiKey,prefs})=>{
   };
 
   const send=async()=>{
-    if(!inp||!apiKey)return;
-    const msg=inp; setInp("");
-    setHist(p=>[...p,{r:"u",t:msg},{r:"ai",t:"...",load:true}]);
+    if(!inp.trim()||!apiKey)return;
+    const text=inp;
+    setInp("");
+    setMsgs(p=>[...p,{r:"u",t:text},{r:"ai",t:"...",loading:true}]);
+    setLoad(true);
     try{
-      const res=await claude(apiKey,[{role:"user",content:msg}],`кухонний асистент. ${prefs?"вподобання: "+prefs:""}`,300);
-      setHist(p=>[...p.slice(0,-1),{r:"ai",t:res}]);
+      const res=await claude(apiKey,[{role:"user",content:text}],`кухонний асистент. вподобання: ${prefs}`,300);
+      setMsgs(p=>[...p.slice(0,-1),{r:"ai",t:res}]);
     }catch(e){}
+    setLoad(false);
   };
 
   return(
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 62px)",padding:"14px 16px 0"}}>
-      <div style={{flex:1,overflowY:"auto"}}>
-        {hist.map((m,i)=><div key={i} style={{textAlign:m.r==="u"?"right":"left",marginBottom:10}}><span style={{background:m.r==="u"?A:C,padding:"8px 14px",borderRadius:14,display:"inline-block"}}>{m.t}</span></div>)}
+    <div style={{display:"flex",flexDirection:"column",height:"calc(100dvh - 62px)"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"14px 16px 0"}}>
+        <div style={{fontWeight:800,fontSize:26,marginBottom:16}}>ai асистент</div>
+        {msgs.map((m,i)=>(
+          <div key={i} style={{textAlign:m.r==="u"?"right":"left",marginBottom:14}}>
+            <div style={{display:"inline-block",padding:"11px 15px",borderRadius:14,background:m.r==="u"?A:C}}>{m.t}</div>
+          </div>
+        ))}
       </div>
-      <div style={{display:"flex",gap:8,paddingBottom:10}}>
-        <button onClick={mic} style={{background:C,border:"none",color:TX,padding:"10px",borderRadius:10}}>🎤</button>
-        <input value={inp} onChange={e=>setInp(e.target.value)} style={{flex:1,background:C,border:"none",color:TX,padding:"10px",borderRadius:10}}/>
-        <button onClick={send} style={{background:A,border:"none",color:"#fff",padding:"10px 16px",borderRadius:10}}>➤</button>
+      <div style={{padding:"10px 16px",background:BG,borderTop:`1px solid ${BR}`,display:"flex",gap:8}}>
+        <button onClick={startVoice} style={{background:C,border:"none",color:TX,padding:"10px 14px",borderRadius:10,cursor:"pointer"}}>● голос</button>
+        <input value={inp} onChange={e=>setInp(e.target.value)} placeholder="запитай..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px",color:TX,outline:"none"}}/>
+        <button onClick={send} disabled={load} style={{padding:"10px 16px",background:A,color:"#fff",border:"none",borderRadius:10,cursor:"pointer"}}>➤</button>
       </div>
     </div>
   );
 };
 
+const ShopPage=({shop,setShop})=>{
+  const[inp,setInp]=useState("");
+  const add=()=>{if(!inp.trim())return;setShop(p=>[...p,{id:Date.now(),name:inp.trim(),from:"вручну",bought:false}]);setInp("");};
+  return(
+    <div style={{padding:"14px 16px 0"}}>
+      <div style={{fontWeight:800,fontSize:26,marginBottom:12}}>покупки</div>
+      <div style={{display:"flex",gap:8,marginBottom:16}}>
+        <input value={inp} onChange={e=>setInp(e.target.value)} placeholder="додати..." style={{flex:1,background:C,border:`1px solid ${BR}`,borderRadius:10,padding:"10px",color:TX}}/>
+        <button onClick={add} style={{background:A,border:"none",color:"#fff",borderRadius:10,padding:"0 18px",fontSize:22}}>+</button>
+      </div>
+      {shop.map(item=>(
+        <div key={item.id} onClick={()=>setShop(p=>p.map(i=>i.id===item.id?{...i,bought:!i.bought}:i))} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",background:C,borderRadius:10,marginBottom:8}}>
+          <div style={{width:22,height:22,borderRadius:6,border:item.bought?"none":`2px solid ${BR}`,background:item.bought?G:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontSize:13}}>{item.bought?"✓":""}</div>
+          <div style={{flex:1,textDecoration:item.bought?"line-through":"none"}}>{item.name}</div>
+          <button onClick={e=>{e.stopPropagation();setShop(p=>p.filter(i=>i.id!==item.id));}} style={{background:"none",border:"none",color:MU}}>×</button>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const SettingsPage=({apiKey,setApiKey,prefs,setPrefs,goal,setGoal})=>{
-  const calc=(w,h,a,g)=>{setGoal(Math.round(10*w+6.25*h-5*a+(g==='m'?5:-161)));};
+  const calcCal=()=>{setGoal(2000);alert("встановлено середню норму 2000 ккал");};
   return(
     <div style={{padding:"14px 16px 0"}}>
       <div style={{fontWeight:800,fontSize:26,marginBottom:20}}>налаштування</div>
       <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:10}}>api ключ</div>
-        <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} style={{width:"100%",padding:10,background:C2,border:"none",color:TX,marginBottom:10}}/>
+        <div style={{fontWeight:700,marginBottom:6}}>api ключ</div>
+        <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",color:TX,width:"100%"}}/>
       </div>
       <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:10}}>мої вподобання (аі врахує це)</div>
-        <textarea value={prefs} onChange={e=>setPrefs(e.target.value)} placeholder="люблю гостре, веган..." style={{width:"100%",padding:10,background:C2,border:"none",color:TX,minHeight:80}}/>
+        <div style={{fontWeight:700,marginBottom:6}}>мої вподобання</div>
+        <textarea value={prefs} onChange={e=>setPrefs(e.target.value)} placeholder="наприклад: люблю гостре..." style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",color:TX,width:"100%",minHeight:80}}/>
       </div>
-      <div style={{background:C,borderRadius:16,padding:20,marginBottom:14}}>
-        <div style={{fontWeight:700,marginBottom:10}}>норма калорій: {goal}</div>
-        <button onClick={()=>calc(75,180,30,'m')} style={{background:A,color:"#fff",border:"none",padding:"10px",borderRadius:10,width:"100%"}}>розрахувати стандарт (м, 75кг)</button>
+      <div style={{background:C,borderRadius:16,padding:20}}>
+        <div style={{fontWeight:700,marginBottom:6}}>норма калорій: {goal}</div>
+        <input type="number" value={goal} onChange={e=>setGoal(+e.target.value)} style={{background:C2,border:`1px solid ${BR}`,borderRadius:10,padding:"11px 14px",color:TX,width:"100%",marginBottom:10}}/>
       </div>
     </div>
   );
@@ -240,28 +402,60 @@ const SettingsPage=({apiKey,setApiKey,prefs,setPrefs,goal,setGoal})=>{
 
 const App=()=>{
   const[tab,setTab]=useState("recipes");
-  const[key,setKey]=useLS("kh_key","");
-  const[faves,setFaves]=useLS("kh_f",[]);
-  const[plan,setPlan]=useLS("kh_p",{});
-  const[hidden,setHidden]=useLS("kh_h",[]);
-  const[prefs,setPrefs]=useLS("kh_pr","");
-  const[goal,setGoal]=useLS("kh_g",2000);
-  const[det,setDet]=useState(null);
+  const[apiKey,setApiKey]=useLS("khawk_key_n","");
+  const[faves,setFaves]=useLS("khawk_faves_n",[]);
+  const[plan,setPlan]=useLS("khawk_plan_n",{});
+  const[shop,setShop]=useLS("khawk_shop_n",[]);
+  const[srv,setSrv]=useLS("khawk_srv_n",4);
+  const[myRecs,setMyRecs]=useLS("khawk_mine_n",[]);
+  const[hidden,setHidden]=useLS("khawk_hid_n",[]);
+  const[prefs,setPrefs]=useLS("khawk_pref_n","");
+  const[goal,setGoal]=useLS("khawk_goal_n",2000);
+  const[detail,setDetail]=useState(null);
+  const[addTo,setAddTo]=useState(null);
 
-  const TABS=[{id:"recipes",icon:"📖"},{id:"plan",icon:"📅"},{id:"calories",icon:"📊"},{id:"chat",icon:"💬"},{id:"settings",icon:"⚙️"}];
+  const confirmPlan=(r,meal)=>{
+    const k=`0-${meal}`;
+    setPlan(p=>({...p,[k]:[...(p[k]||[]),r]}));
+    (r.ing||[]).forEach(i=>setShop(p=>[...p,{id:Date.now()+Math.random(),name:`${i.a} ${i.n}`.trim(),from:r.name,bought:false}]));
+    setAddTo(null);
+  };
+
+  const TABS=[{id:"recipes",icon:"📖"},{id:"plan",icon:"📅"},{id:"calories",icon:"📊"},{id:"chat",icon:"💬"},{id:"shop",icon:"🛒"},{id:"settings",icon:"⚙️"}];
 
   return(
     <div style={{background:BG,minHeight:"100dvh",color:TX,display:"flex",flexDirection:"column"}}>
-      {det&&<RDetail r={det} onBack={()=>setDet(null)} onPlan={r=>setDet(null)} apiKey={key} prefs={prefs}/>}
-      <div style={{flex:1,overflowY:"auto",paddingBottom:80}}>
-        {tab==="recipes"&&<RecipesPage faves={faves} onFav={id=>setFaves(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])} onOpen={setDet} hidden={hidden} setHidden={setHidden} apiKey={key}/>}
-        {tab==="plan"&&<PlanPage plan={plan} setPlan={setPlan}/>}
-        {tab==="calories"&&<CaloriesPage apiKey={key} goal={goal}/>}
-        {tab==="chat"&&<ChatPage apiKey={key} prefs={prefs}/>}
-        {tab==="settings"&&<SettingsPage apiKey={key} setApiKey={setKey} prefs={prefs} setPrefs={setPrefs} goal={goal} setGoal={setGoal}/>}
+      {detail&&<RDetail r={detail} srv={srv} setSrv={setSrv} onBack={()=>setDetail(null)} onPlan={r=>{setAddTo(r);setDetail(null);}} apiKey={apiKey} prefs={prefs}/>}
+
+      {addTo&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.88)",zIndex:90,display:"flex",alignItems:"flex-end",maxWidth:430,margin:"0 auto"}}>
+          <div style={{background:C,borderRadius:"24px 24px 0 0",padding:"24px 20px 36px",width:"100%"}}>
+            <div style={{fontWeight:700,fontSize:17,marginBottom:18}}>{addTo.name}</div>
+            {PLAN_MEALS.map(m=>(
+              <button key={m} onClick={()=>confirmPlan(addTo,m)} style={{display:"flex",alignItems:"center",gap:14,width:"100%",background:C2,border:"none",color:TX,borderRadius:14,padding:"14px 18px",fontSize:15,cursor:"pointer",marginBottom:8}}>
+                {m}
+              </button>
+            ))}
+            <button onClick={()=>setAddTo(null)} style={{width:"100%",background:"transparent",border:`1px solid ${BR}`,color:MU,borderRadius:14,padding:13,marginTop:4}}>скасувати</button>
+          </div>
+        </div>
+      )}
+
+      <div style={{flex:1,overflowY:tab==="chat"?"hidden":"auto",paddingBottom:tab==="chat"?0:80}}>
+        {tab==="recipes"&&<RecipesPage faves={faves} onFav={id=>setFaves(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id])} onAdd={r=>setAddTo(r)} onOpen={r=>setDetail(r)} myRecs={myRecs} setMyRecs={setMyRecs} apiKey={apiKey} hidden={hidden} setHidden={setHidden} prefs={prefs}/>}
+        {tab==="plan"&&<PlanPage plan={plan} setPlan={setPlan} shop={shop} setShop={setShop} srv={srv} setSrv={setSrv}/>}
+        {tab==="calories"&&<CaloriesPage apiKey={apiKey} goal={goal}/>}
+        {tab==="chat"&&<ChatPage apiKey={apiKey} prefs={prefs}/>}
+        {tab==="shop"&&<ShopPage shop={shop} setShop={setShop}/>}
+        {tab==="settings"&&<SettingsPage apiKey={apiKey} setApiKey={setApiKey} prefs={prefs} setPrefs={setPrefs} goal={goal} setGoal={setGoal}/>}
       </div>
-      <div style={{background:"#111",display:"flex",position:"fixed",bottom:0,width:"100%",maxWidth:430,borderTop:`1px solid ${BR}`}}>
-        {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"14px",border:"none",background:"transparent",color:tab===t.id?A:MU,fontSize:22}}>{t.icon}</button>)}
+
+      <div style={{background:"#111",display:"flex",position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,borderTop:`1px solid ${BR}`,zIndex:50}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",padding:"14px 2px",border:"none",background:"transparent",color:tab===t.id?A:MU,cursor:"pointer",fontSize:20,borderTop:tab===t.id?`2px solid ${A}`:"2px solid transparent"}}>
+            {t.icon}
+          </button>
+        ))}
       </div>
     </div>
   );
